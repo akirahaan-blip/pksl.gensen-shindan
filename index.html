@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="ポケモンスリープの厳選確率診断。欲しいサブスキル・せいかく・食材を入れると「たぶん何体目で出るか」（50%・80%・90%・99%ライン）を計算します。銀種（サブスキルのたね）で格上げして届く個体も数えられる非公式ファンツール。">
+<meta name="theme-color" content="#0f7f86">
+<link rel="icon" href="icon.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://akirahaan-blip.github.io/pksl.gensen-shindan/">
+<meta property="og:title" content="ポケスリ 厳選診断">
+<meta property="og:description" content="欲しいサブスキル・せいかく・食材を入れると「たぶん何体目で出るか」を計算する、ポケモンスリープの厳選確率診断（銀種にも対応・非公式ファンツール）">
+<meta property="og:image" content="https://akirahaan-blip.github.io/pksl.gensen-shindan/ogp.png">
+<meta name="twitter:card" content="summary_large_image">
+<title>ポケスリ 厳選診断</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@700;800&display=swap">
+
+<style>
+/* 文字はすべて M PLUS 1p Heavy(800)。13.5px より小さい文字だけ Bold(700) に落とす。
+   太さは html/body にだけ置いて、あとは親から受け継がせる。 */
+html, body { font-weight: 800; }
+h1, h2, h3, h4, h5, h6, b, strong, th, summary,
+button, input, select, textarea, option, optgroup, legend, label { font-weight: inherit; }
+
+/* ============ 配色（ターコイズブルー基調 / 明るい画面・暗い画面の両対応） ============ */
+:root{
+  --bg:#EEFAFA;
+  --bg-grad:#DDF4F4;
+  --surface:#FFFFFF;
+  --surface-2:#F0FAFA;
+  --line:#BFE6E6;
+  --text:#123A3E;
+  --text-dim:#3F6E72;
+  --text-faint:#6E9A9D;
+  --accent:#0F7F86;
+  --accent-ink:#FFFFFF;
+  --accent-soft:#D3F1F1;
+  --good:#2F7856;
+  --warn:#A9661A;
+  --bad:#AE4638;
+  --shadow:0 10px 28px rgba(15,110,120,.14);
+  /* 下の3つは「意味を持つ色」＝サブスキルのレア度。ターコイズにそろえないこと */
+  --gold:#B98410;
+  --gold-bg:#FFF3CC;
+  --blue:#3B5FD9;
+  --blue-bg:#E3E9FF;
+  --white:#7C7C8C;
+  --white-bg:#F1F1F5;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#062A2E;
+    --bg-grad:#0A3A40;
+    --surface:#0D3D43;
+    --surface-2:#124A51;
+    --line:#1F6A72;
+    --text:#E6FBFB;
+    --text-dim:#A6DCDE;
+    --text-faint:#7FB9BC;
+    --accent:#4FD8D3;
+    --accent-ink:#04292C;
+    --accent-soft:#175C63;
+    --good:#74C69D;
+    --warn:#E9A25C;
+    --bad:#E07A6E;
+    --shadow:0 10px 30px rgba(0,0,0,.45);
+    --gold:#F2C14E;
+    --gold-bg:#4A3A10;
+    --blue:#8FA8FF;
+    --blue-bg:#25306A;
+    --white:#DCDCE4;
+    --white-bg:#3A3F55;
+  }
+}
+
+*{ box-sizing:border-box; }
+body{
+  margin:0; padding:16px 12px 60px;
+  font-family:"M PLUS 1p", system-ui, sans-serif;
+  background:linear-gradient(180deg, var(--bg), var(--bg-grad));
+  background-attachment:fixed;
+  color:var(--text);
+  line-height:1.5;
+}
+.wrap{ max-width:760px; margin:0 auto; }
+
+header{ text-align:center; margin-bottom:14px; }
+h1{ font-size:26px; margin:0 0 4px; color:var(--accent); letter-spacing:.02em; }
+.sub{ font-size:13px; color:var(--text-dim); margin:0; }
+
+.card{
+  background:var(--surface); border:1px solid var(--line); border-radius:16px;
+  padding:14px 14px 16px; margin-bottom:14px; box-shadow:var(--shadow);
+}
+h2{ font-size:16px; margin:0 0 10px; color:var(--accent); }
+h2 small{ font-size:12px; color:var(--text-faint); margin-left:6px; }
+.hint{ font-size:12.5px; color:var(--text-dim); margin:6px 0 0; }
+
+input[type=text], select{
+  width:100%; font-family:inherit; font-size:15px; padding:9px 10px;
+  border:1.5px solid var(--line); border-radius:10px; background:var(--surface-2); color:var(--text);
+}
+input[type=text]:focus, select:focus{ outline:none; border-color:var(--accent); }
+.row{ display:flex; gap:8px; flex-wrap:wrap; }
+.row > *{ flex:1 1 180px; }
+
+/* チップ（丸いボタンの並び） */
+.chips{ display:flex; gap:6px; flex-wrap:wrap; }
+.chip{
+  font-family:inherit; font-size:13.5px; padding:7px 12px; border-radius:999px;
+  border:1.5px solid var(--line); background:var(--surface-2); color:var(--text-dim); cursor:pointer;
+}
+.chip.on{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+.chip:disabled{ opacity:.45; cursor:not-allowed; }
+
+/* サブスキルのボタン（レア度で色分け） */
+.subgrid{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+.sb{
+  font-family:inherit; font-size:13px; padding:6px 10px; border-radius:10px; cursor:pointer;
+  border:1.5px solid transparent; color:var(--text);
+}
+.sb.g{ background:var(--gold-bg);  color:var(--gold);  }
+.sb.b{ background:var(--blue-bg);  color:var(--blue);  }
+.sb.w{ background:var(--white-bg); color:var(--white); }
+.sb.on{ border-color:currentColor; box-shadow:0 0 0 2px var(--surface), 0 0 0 4px currentColor; }
+.rarelabel{ font-size:12px; color:var(--text-faint); margin:8px 0 4px; }
+
+/* 選んだサブスキルの一覧 */
+.wantlist{ margin-top:10px; display:flex; flex-direction:column; gap:6px; }
+.want{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:6px 8px;
+}
+.want .nm{ flex:1 1 140px; font-size:14px; }
+.want .nm.g{ color:var(--gold); } .want .nm.b{ color:var(--blue); } .want .nm.w{ color:var(--white); }
+.want select{ width:auto; font-size:13px; padding:5px 8px; }
+.want .del{
+  font-family:inherit; font-size:13px; border:none; background:transparent; color:var(--bad); cursor:pointer; padding:4px 6px;
+}
+.empty{ font-size:13.5px; color:var(--text-faint); padding:8px 4px; }
+
+/* せいかくのチェック */
+.checks{ display:flex; gap:6px 12px; flex-wrap:wrap; font-size:13.5px; }
+.checks label{ display:flex; align-items:center; gap:4px; cursor:pointer; }
+.checks input{ width:16px; height:16px; accent-color:var(--accent); }
+
+/* 結果 */
+.bigbox{
+  background:linear-gradient(135deg, var(--accent-soft), var(--surface-2));
+  border:1.5px solid var(--accent); border-radius:16px; padding:14px; text-align:center;
+}
+.bigbox .lead{ font-size:14px; color:var(--text-dim); }
+.bigbox .big{ font-size:44px; line-height:1.1; color:var(--accent); margin:4px 0; }
+.bigbox .big small{ font-size:18px; }
+.bigbox .cond{ font-size:13px; color:var(--text-dim); margin-top:4px; }
+.tiles{ display:grid; grid-template-columns:repeat(auto-fit, minmax(120px,1fr)); gap:8px; margin-top:10px; }
+.tile{ background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:8px 6px; text-align:center; }
+.tile .k{ font-size:12px; color:var(--text-faint); }
+.tile .v{ font-size:22px; color:var(--text); }
+.tile .v small{ font-size:12px; color:var(--text-dim); }
+
+.tablewrap{ overflow-x:auto; margin-top:12px; }
+table{ border-collapse:collapse; width:100%; font-size:14px; }
+th, td{ border:1px solid var(--line); padding:7px 6px; text-align:center; white-space:nowrap; }
+th{ background:var(--surface-2); color:var(--text-dim); font-size:12.5px; }
+td.main{ background:var(--accent-soft); color:var(--accent); }
+td .p{ display:block; font-size:11.5px; color:var(--text-faint); }
+td.na{ color:var(--text-faint); }
+
+.status{ font-size:13px; color:var(--text-faint); margin-top:8px; min-height:1.4em; }
+.legend{ font-size:12.5px; color:var(--text-dim); margin-top:10px; }
+.legend li{ margin:2px 0; }
+
+details{ margin-top:6px; }
+summary{ cursor:pointer; color:var(--accent); font-size:14px; }
+details p, details li{ font-size:13px; color:var(--text-dim); }
+
+footer{ text-align:center; font-size:11.5px; color:var(--text-faint); margin-top:18px; line-height:1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>ポケスリ 厳選診断</h1>
+  <p class="sub">欲しい個体は、たぶん何体目で出る？ 銀種で届く個体も数えます</p>
+</header>
+
+<!-- ① ポケモン -->
+<section class="card">
+  <h2>① どのポケモン？ <small>食材の並びを見るときだけ使います</small></h2>
+  <div class="row">
+    <input type="text" id="search" placeholder="名前でしぼりこみ（例：ピカ）" autocomplete="off">
+    <select id="monsel"></select>
+  </div>
+  <p class="hint" id="moninfo"></p>
+</section>
+
+<!-- ② 金枠確定 -->
+<section class="card">
+  <h2>② 金枠確定（フレンドメダル） <small>上の枠から順に金が確定します</small></h2>
+  <div class="chips" id="goldchips"></div>
+</section>
+
+<!-- ③ 欲しいサブスキル -->
+<section class="card">
+  <h2>③ 欲しいサブスキル</h2>
+  <div class="rarelabel">金（1枠あたり 2%）</div>
+  <div class="subgrid" id="grid-g"></div>
+  <div class="rarelabel">青（1枠あたり 6%）</div>
+  <div class="subgrid" id="grid-b"></div>
+  <div class="rarelabel">白（1枠あたり 12.5%）</div>
+  <div class="subgrid" id="grid-w"></div>
+  <div class="wantlist" id="wantlist"></div>
+  <p class="hint">「この枠までに」を変えると、たとえば「きのみの数S は Lv25 までに欲しい」のような指定ができます。ふだんは「枠数まで」のままで大丈夫です。</p>
+</section>
+
+<!-- ④ 銀種 -->
+<section class="card">
+  <h2>④ 銀種（サブスキルのたね）を何個まで使う？</h2>
+  <div class="chips" id="seedchips"></div>
+  <p class="hint">銀種は「解放済みの枠のうち、ランクを上げられるものを1つランダムに上げる」道具です。
+    このツールは、いちばん狙いやすいレベルで使う前提で、<b>格上げすれば条件を満たせる個体も"当たり"に数えます</b>。
+    上げられるのは S→M（おてつだいスピード・食材確率・スキル確率・最大所持数・スキルレベルアップ）と、最大所持数 M→L だけです。</p>
+</section>
+
+<!-- ⑤ せいかく -->
+<section class="card">
+  <h2>⑤ せいかく <small>こだわらないなら そのままで</small></h2>
+  <div class="row">
+    <div>
+      <div class="rarelabel">上がってほしい補正</div>
+      <select id="natup"></select>
+    </div>
+  </div>
+  <div class="rarelabel">下がったらイヤな補正（チェックした補正が下がるせいかくは"はずれ"）</div>
+  <div class="checks" id="natdn"></div>
+  <p class="hint" id="natinfo"></p>
+</section>
+
+<!-- ⑥ 食材 -->
+<section class="card">
+  <h2>⑥ 食材の並び <small>こだわらないなら そのままで</small></h2>
+  <select id="ingsel"></select>
+  <p class="hint" id="inginfo"></p>
+</section>
+
+<!-- 結果 -->
+<section class="card">
+  <h2>診断結果</h2>
+  <div class="rarelabel">サブスキルを何枠まで見る？（大きく表示する列）</div>
+  <div class="chips" id="kchips"></div>
+  <div id="result"></div>
+  <div class="status" id="status"></div>
+</section>
+
+<section class="card">
+  <details>
+    <summary>この数字の出し方・前提（ひらく）</summary>
+    <ul>
+      <li>サブスキルは1枠ごとに 金2%×7種・青6%×6種・白12.5%×4種 の重みで、同じものが重ならないように上から順に引く、として計算しています（出典：ポケモンスリープ攻略・検証Wiki「サブスキル」）。</li>
+      <li>金枠確定は、確定した枠に金7種のどれかが同じ確率で入る、としています。</li>
+      <li>「80%ライン」は「その体数まで捕まえれば、80%の人は1体は当たりを引けている」という数です。「たぶん○体目」は50%ラインです。</li>
+      <li>せいかくは25種が同じ確率、食材は2枠目 A=1/3・B=2/3、3枠目は候補3種なら1/3ずつ（候補2種なら A=1/3・B=2/3）としています。</li>
+      <li>銀種は「そのとき解放されている枠の中で、上げられるものを1つランダムに上げる」「同じサブスキルは1匹に2つ持てないので、上げた結果が重なる枠は対象外」として計算しています。何個使えるかは公式に明記が無いため、個数はこの画面で選べるようにしています。</li>
+      <li>サイコロを振らずに全パターンを確率つきで数えているので、同じ入力なら毎回同じ数字が出ます。</li>
+    </ul>
+  </details>
+</section>
+
+<footer>
+  個人が作成した非公式のファンツールです。実際のゲームには影響しません。<br>
+  ポケモンおよび Pokémon Sleep は 任天堂・クリーチャーズ・ゲームフリーク・The Pokémon Company の商標です。
+</footer>
+
+</div>
+
+<script>
+/* =========================================================================
+   1. データ
+      ポケモン245匹（名前 / とくい / ゲージ数 / メインスキル /
+      食材1[番号,Lv1個数,Lv30個数,Lv60個数] / 食材2[番号,Lv30個数,Lv60個数] / 食材3[番号,Lv60個数]）
+      と食材名。pksl.snacktimesim（おやつタイムシミュレーター）から そのまま持ってきた1行です。
+   ========================================================================= */
+var ING_NAMES=["あまいミツ","あんみんトマト","ほっこりポテト","マメミート","あったかジンジャー","げきからハーブ","モーモーミルク","リラックスカカオ","ワカクサ大豆","とくせんリンゴ","とくせんエッグ","ずっしりカボチャ","ワカクサコーン","ピュアなオイル","ふといながねぎ","あじわいキノコ","おいしいシッポ","めざましコーヒー","つやつやアボカド"];
+var MON_DATA=[["フシギダネ","食材",5,"食材ゲットS",[0,2,5,7],[1,4,7],[2,6]],["フシギソウ","食材",12,"食材ゲットS",[0,2,5,7],[1,4,7],[2,6]],["フシギバナ","食材",20,"食材ゲットS",[0,2,5,7],[1,4,7],[2,6]],["ヒトカゲ","食材",5,"食材ゲットS",[3,2,5,7],[4,4,7],[5,6]],["リザード","食材",12,"食材ゲットS",[3,2,5,7],[4,4,7],[5,6]],["リザードン","食材",20,"食材ゲットS",[3,2,5,7],[4,4,7],[5,6]],["ゼニガメ","食材",5,"食材ゲットS",[6,2,5,7],[7,3,5],[3,7]],["カメール","食材",12,"食材ゲットS",[6,2,5,7],[7,3,5],[3,7]],["カメックス","食材",20,"食材ゲットS",[6,2,5,7],[7,3,5],[3,7]],["キャタピー","きのみ",5,"食材ゲットS",[0,1,2,4],[1,2,3],[8,4]],["トランセル","きのみ",7,"食材ゲットS",[0,1,2,4],[1,2,3],[8,4]],["バタフリー","きのみ",15,"食材ゲットS",[0,1,2,4],[1,2,3],[8,4]],["コラッタ","きのみ",5,"げんきチャージS",[9,1,2,4],[8,2,3],[3,3]],["ラッタ","きのみ",12,"げんきチャージS",[9,1,2,4],[8,2,3],[3,3]],["アーボ","きのみ",5,"げんきチャージS",[3,1,2,4],[10,2,3],[5,3]],["アーボック","きのみ",12,"げんきチャージS",[3,1,2,4],[10,2,3],[5,3]],["ピカチュウ","きのみ",7,"エナジーチャージS",[9,1,2,4],[4,2,3],[10,3]],["ピカチュウ (ホリデー)","スキル",7,"ゆめのかけらゲットS",[9,1,2,4],[4,2,3],[10,3]],["ピカチュウ (ハロウィン)","きのみ",7,"エナジーチャージS (ランダム)",[9,1,2,4],[4,2,3],[10,3]],["ピカチュウ (キャプテン)","きのみ",7,"食材ゲットS",[9,1,2,4],[4,2,3],[10,3]],["ライチュウ","きのみ",18,"エナジーチャージS",[9,1,2,4],[4,2,3],[10,3]],["サンド","スキル",5,"食材セレクトS",[11,1,2,4],[12,4,6],[2,7]],["サンドパン","スキル",12,"食材セレクトS",[11,1,2,4],[12,4,6],[2,7]],["ピッピ","きのみ",7,"ゆびをふる",[9,1,2,4],[0,2,3],[8,3]],["ピクシー","きのみ",20,"ゆびをふる",[9,1,2,4],[0,2,3],[8,3]],["ロコン","きのみ",5,"げんきエールS",[8,1,2,4],[12,2,3],[2,3]],["ロコン (アローラ)","きのみ",5,"おてつだいサポートS",[8,1,2,4],[12,2,3],[2,3]],["キュウコン","きのみ",20,"げんきエールS",[8,1,2,4],[12,2,3],[2,3]],["キュウコン (アローラ)","きのみ",20,"おてつだいサポートS",[8,1,2,4],[12,2,3],[2,3]],["プリン","スキル",7,"げんきオールS",[0,1,2,4],[13,2,3],[7,2]],["プクリン","スキル",16,"げんきオールS",[0,1,2,4],[13,2,3],[7,2]],["ディグダ","食材",5,"エナジーチャージS",[1,2,5,7],[14,3,4],[8,8]],["ダグトリオ","食材",12,"エナジーチャージS",[1,2,5,7],[14,3,4],[8,8]],["ニャース","スキル",5,"ゆめのかけらゲットS",[6,1,2,4],[3,2,3],null],["ペルシアン","スキル",12,"ゆめのかけらゲットS",[6,1,2,4],[3,2,3],null],["コダック","スキル",5,"エナジーチャージS (ランダム)",[7,1,2,4],[9,4,6],[3,5]],["ゴルダック","スキル",12,"エナジーチャージS (ランダム)",[7,1,2,4],[9,4,6],[3,5]],["マンキー","きのみ",5,"エナジーチャージS (ランダム)",[3,1,2,4],[15,1,2],[0,4]],["オコリザル","きのみ",12,"エナジーチャージS (ランダム)",[3,1,2,4],[15,1,2],[0,4]],["ガーディ","スキル",5,"おてつだいサポートS",[5,1,2,4],[3,3,5],[6,5]],["ウインディ","スキル",20,"おてつだいサポートS",[5,1,2,4],[3,3,5],[6,5]],["マダツボミ","食材",5,"げんきチャージS",[1,2,5,7],[2,4,6],[14,4]],["ウツドン","食材",12,"げんきチャージS",[1,2,5,7],[2,4,6],[14,4]],["ウツボット","食材",20,"げんきチャージS",[1,2,5,7],[2,4,6],[14,4]],["イシツブテ","食材",5,"エナジーチャージS (ランダム)",[8,2,5,7],[2,4,6],[15,4]],["ゴローン","食材",12,"エナジーチャージS (ランダム)",[8,2,5,7],[2,4,6],[15,4]],["ゴローニャ","食材",22,"エナジーチャージS (ランダム)",[8,2,5,7],[2,4,6],[15,4]],["ヤドン","スキル",5,"げんきエールS",[7,1,2,4],[16,1,2],[1,5]],["ヤドラン","スキル",12,"げんきエールS",[7,1,2,4],[16,1,2],[1,5]],["コイル","スキル",5,"料理パワーアップS",[13,1,2,4],[5,2,3],null],["レアコイル","スキル",12,"料理パワーアップS",[13,1,2,4],[5,2,3],null],["カモネギ","食材",16,"エナジーチャージS",[14,2,5,7],[3,8,13],[4,12]],["ドードー","きのみ",5,"げんきチャージS",[8,1,2,4],[7,1,2],[3,3]],["ドードリオ","きのみ",12,"げんきチャージS",[8,1,2,4],[7,1,2],[3,3]],["ゴース","食材",5,"エナジーチャージS (ランダム)",[5,2,5,7],[15,4,6],[13,8]],["ゴースト","食材",12,"エナジーチャージS (ランダム)",[5,2,5,7],[15,4,6],[13,8]],["ゲンガー","食材",22,"エナジーチャージS (ランダム)",[5,2,5,7],[15,4,6],[13,8]],["イワーク","きのみ",16,"食材ゲットS",[1,1,2,4],[3,2,4],[2,3]],["カラカラ","きのみ",5,"げんきチャージS",[4,1,2,4],[7,2,3],null],["ガラガラ","きのみ",12,"げんきチャージS",[4,1,2,4],[7,2,3],null],["ラッキー","食材",16,"げんきオールS",[10,2,5,7],[2,4,7],[0,8]],["ガルーラ","食材",16,"食材ゲットS",[4,2,5,7],[2,4,6],[8,8]],["バリヤード","食材",12,"ものまね (スキルコピー)",[1,2,5,7],[2,4,6],[14,4]],["カイロス","食材",16,"エナジーチャージM",[0,2,5,7],[9,5,8],[3,7]],["メタモン","食材",16,"へんしん (スキルコピー)",[13,2,5,7],[14,3,5],[16,3]],["イーブイ","スキル",5,"食材ゲットS",[6,1,2,4],[7,1,2],[3,3]],["イーブイ (ハロウィン)","スキル",5,"食材ゲットS",[11,1,2,4],[7,4,6],[6,9]],["イーブイ (ホリデー)","きのみ",5,"ゆめのかけらゲットS",[6,1,2,4],[7,1,2],[3,3]],["シャワーズ","スキル",20,"食材ゲットS",[6,1,2,4],[7,1,2],[3,3]],["サンダース","スキル",20,"おてつだいサポートS",[6,1,2,4],[7,1,2],[3,3]],["ブースター","スキル",20,"料理パワーアップS",[6,1,2,4],[7,1,2],[3,3]],["ミニリュウ","食材",5,"げんきチャージS",[5,2,5,7],[12,4,7],[13,8]],["ハクリュー","食材",12,"げんきチャージS",[5,2,5,7],[12,4,7],[13,8]],["カイリュー","食材",25,"げんきチャージS",[5,2,5,7],[12,4,7],[13,8]],["ミュウツー","スキル",30,"サイコブレイク (きのみゾーン)",[-1,1,2,4],[-1,4,0],[-1,0]],["ミュウ","オール",25,"オールマイティー",[10,2,0,0],[5,4,0],[-1,0]],["チコリータ","きのみ",5,"エナジーチャージS (ランダム)",[7,1,2,4],[0,3,5],[14,3]],["ベイリーフ","きのみ",12,"エナジーチャージS (ランダム)",[7,1,2,4],[0,3,5],[14,3]],["メガニウム","きのみ",20,"エナジーチャージS (ランダム)",[7,1,2,4],[0,3,5],[14,3]],["ヒノアラシ","きのみ",5,"エナジーチャージS (ランダム)",[4,1,2,4],[5,2,3],[13,3]],["マグマラシ","きのみ",12,"エナジーチャージS (ランダム)",[4,1,2,4],[5,2,3],[13,3]],["バクフーン","きのみ",20,"エナジーチャージS (ランダム)",[4,1,2,4],[5,2,3],[13,3]],["ワニノコ","きのみ",5,"エナジーチャージS (ランダム)",[3,1,2,4],[13,2,3],null],["アリゲイツ","きのみ",12,"エナジーチャージS (ランダム)",[3,1,2,4],[13,2,3],null],["オーダイル","きのみ",20,"エナジーチャージS (ランダム)",[3,1,2,4],[13,2,3],null],["ピチュー","きのみ",5,"エナジーチャージS",[9,1,2,4],[4,2,3],[10,3]],["ピィ","きのみ",5,"ゆびをふる",[9,1,2,4],[0,2,3],[8,3]],["ププリン","スキル",5,"げんきオールS",[0,1,2,4],[13,2,3],[7,2]],["トゲピー","スキル",5,"ゆびをふる",[10,1,2,4],[4,2,4],[7,3]],["トゲチック","スキル",12,"ゆびをふる",[10,1,2,4],[4,2,4],[7,3]],["ネイティ","きのみ",12,"食材ゲットS",[10,1,2,4],[7,2,3],[9,5]],["ネイティオ","きのみ",12,"食材ゲットS",[10,1,2,4],[7,2,3],[9,5]],["メリープ","スキル",5,"エナジーチャージM",[5,1,2,4],[10,3,4],null],["モココ","スキル",12,"エナジーチャージM",[5,1,2,4],[10,3,4],null],["デンリュウ","スキル",20,"エナジーチャージM",[5,1,2,4],[10,3,4],null],["ウソッキー","スキル",7,"エナジーチャージM",[1,1,2,4],[8,2,4],[15,2]],["ウパー","食材",5,"げんきチャージS",[15,2,5,7],[2,6,10],[3,12]],["ウパー (パルデア)","食材",5,"げんきチャージS",[7,2,5,7],[17,4,7],[2,9]],["ヌオー","食材",12,"げんきチャージS",[15,2,5,7],[2,6,10],[3,12]],["エーフィ","スキル",20,"エナジーチャージM",[6,1,2,4],[7,1,2],[3,3]],["ブラッキー","スキル",20,"つきのひかり (げんきチャージS)",[6,1,2,4],[7,1,2],[3,3]],["ヤミカラス","スキル",16,"きょううん (食材セレクトS)",[17,1,2,4],[8,3,6],[5,4]],["ヤドキング","スキル",20,"げんきエールS",[7,1,2,4],[16,1,2],[1,5]],["ソーナンス","スキル",7,"げんきエールS",[9,1,2,4],[15,1,2],[13,3]],["ハガネール","きのみ",20,"食材ゲットS",[1,1,2,4],[3,2,4],[2,3]],["ツボツボ","スキル",16,"きのみジュース (げんきオールS)",[13,1,2,4],[17,2,3],[0,4]],["ヘラクロス","スキル",16,"ビルドアップ (料理アシストS)",[0,1,2,4],[15,1,2],[3,4]],["ニューラ","きのみ",16,"料理チャンスS",[3,1,2,4],[10,2,3],[8,4]],["デリバード","食材",16,"プレゼント (食材ゲットS)",[10,2,5,7],[9,6,9],[7,5]],["デルビル","きのみ",5,"エナジーチャージM",[5,1,2,4],[4,3,4],[14,3]],["ヘルガー","きのみ",12,"エナジーチャージM",[5,1,2,4],[4,3,4],[14,3]],["ハピナス","食材",20,"げんきオールS",[10,2,5,7],[2,4,7],[0,8]],["ライコウ","スキル",30,"おてつだいブースト",[3,1,2,4],[5,2,3],[14,2]],["エンテイ","スキル",30,"おてつだいブースト",[13,1,2,4],[1,2,4],[15,3]],["スイクン","スキル",30,"おてつだいブースト",[9,1,2,4],[13,2,3],[12,2]],["ヨーギラス","食材",5,"げんきチャージS",[4,2,5,7],[8,5,8],[3,8]],["サナギラス","食材",12,"げんきチャージS",[4,2,5,7],[8,5,8],[3,8]],["バンギラス","食材",25,"げんきチャージS",[4,2,5,7],[8,5,8],[3,8]],["キモリ","スキル",5,"きのみバースト",[10,1,2,4],[17,2,3],[14,2]],["ジュプトル","スキル",12,"きのみバースト",[10,1,2,4],[17,2,3],[14,2]],["ジュカイン","スキル",20,"きのみバースト",[10,1,2,4],[17,2,3],[14,2]],["アチャモ","きのみ",5,"げんきチャージS",[15,1,2,4],[8,4,6],[13,5]],["ワカシャモ","きのみ",12,"げんきチャージS",[15,1,2,4],[8,4,6],[13,5]],["バシャーモ","きのみ",20,"げんきチャージS",[15,1,2,4],[8,4,6],[13,5]],["ミズゴロウ","きのみ",5,"料理チャンスS",[12,1,2,4],[6,3,5],[15,3]],["ヌマクロー","きのみ",12,"料理チャンスS",[12,1,2,4],[6,3,5],[15,3]],["ラグラージ","きのみ",20,"料理チャンスS",[12,1,2,4],[6,3,5],[15,3]],["ラルトス","スキル",5,"げんきオールS",[9,1,2,4],[12,1,2],[14,2]],["キルリア","スキル",12,"げんきオールS",[9,1,2,4],[12,1,2],[14,2]],["サーナイト","スキル",20,"げんきオールS",[9,1,2,4],[12,1,2],[14,2]],["ナマケロ","きのみ",5,"食材ゲットS",[1,1,2,4],[0,2,4],[9,4]],["ヤルキモノ","きのみ",12,"食材ゲットS",[1,1,2,4],[0,2,4],[9,4]],["ケッキング","きのみ",22,"食材ゲットS",[1,1,2,4],[0,2,4],[9,4]],["ヤミラミ","スキル",16,"ゆめのかけらゲットS (ランダム)",[13,1,2,4],[15,2,3],[7,3]],["クチート","食材",16,"かいりきバサミ (食材セレクトS)",[13,2,5,7],[12,4,6],[1,8]],["ココドラ","食材",5,"げんきチャージS",[3,2,5,7],[17,3,5],[8,7]],["コドラ","食材",12,"げんきチャージS",[3,2,5,7],[17,3,5],[8,7]],["ボスゴドラ","食材",20,"げんきチャージS",[3,2,5,7],[17,3,5],[8,7]],["プラスル","スキル",10,"プラス (食材ゲットS)",[17,1,2,4],[14,2,3],[6,6]],["マイナン","スキル",10,"マイナス (料理パワーアップS)",[0,1,2,4],[10,2,3],[6,4]],["ゴクリン","スキル",5,"ゆめのかけらゲットS (ランダム)",[8,1,2,4],[15,1,2],[0,4]],["マルノーム","スキル",12,"ゆめのかけらゲットS (ランダム)",[8,1,2,4],[15,1,2],[0,4]],["ナックラー","食材",5,"エナジーチャージS",[18,2,5,7],[5,6,9],[8,12]],["ビブラーバ","食材",12,"エナジーチャージS",[18,2,5,7],[5,6,9],[8,12]],["フライゴン","食材",20,"エナジーチャージS",[18,2,5,7],[5,6,9],[8,12]],["チルット","きのみ",5,"げんきチャージS",[10,1,2,4],[8,3,4],[9,5]],["チルタリス","きのみ",12,"げんきチャージS",[10,1,2,4],[8,3,4],[9,5]],["カゲボウズ","きのみ",5,"エナジーチャージS (ランダム)",[13,1,2,4],[4,2,4],[15,3]],["ジュペッタ","きのみ",16,"エナジーチャージS (ランダム)",[13,1,2,4],[4,2,4],[15,3]],["アブソル","食材",16,"エナジーチャージM",[7,2,5,7],[9,8,12],[15,7]],["ソーナノ","スキル",5,"げんきエールS",[9,1,2,4],[15,1,2],[13,3]],["タマザラシ","きのみ",5,"食材ゲットS",[13,1,2,4],[3,3,4],[4,4]],["タマザラシ (ホリデー)","スキル",5,"料理チャンスS",[13,1,2,4],[3,3,4],[4,4]],["トドグラー","きのみ",12,"食材ゲットS",[13,1,2,4],[3,3,4],[4,4]],["トドゼルガ","きのみ",20,"食材ゲットS",[13,1,2,4],[3,3,4],[4,4]],["タツベイ","きのみ",5,"料理パワーアップS",[2,1,2,4],[4,3,4],[3,4]],["コモルー","きのみ",12,"料理パワーアップS",[2,1,2,4],[4,3,4],[3,4]],["ボーマンダ","きのみ",20,"料理パワーアップS",[2,1,2,4],[4,3,4],[3,4]],["ラティアス","スキル",30,"いやしのはどう (げんきエールS)",[1,1,2,4],[11,1,2],[15,2]],["ラティオス","スキル",30,"りゅうせいぐん (きのみバースト)",[1,1,2,4],[10,2,3],[6,4]],["ナエトル","スキル",5,"げんきオールS",[15,1,2,4],[2,3,5],[4,6]],["ハヤシガメ","スキル",12,"げんきオールS",[15,1,2,4],[2,3,5],[4,6]],["ドダイトス","スキル",20,"げんきオールS",[15,1,2,4],[2,3,5],[4,6]],["ヒコザル","スキル",5,"きのみバースト",[5,1,2,4],[4,3,4],[17,3]],["モウカザル","スキル",12,"きのみバースト",[5,1,2,4],[4,3,4],[17,3]],["ゴウカザル","スキル",20,"きのみバースト",[5,1,2,4],[4,3,4],[17,3]],["ポッチャマ","きのみ",5,"おてつだいサポートS",[10,1,2,4],[14,1,2],[0,4]],["ポッタイシ","きのみ",12,"おてつだいサポートS",[10,1,2,4],[14,1,2],[0,4]],["エンペルト","きのみ",20,"おてつだいサポートS",[10,1,2,4],[14,1,2],[0,4]],["コリンク","食材",5,"料理パワーアップS",[1,2,5,7],[13,4,7],[17,5]],["ルクシオ","食材",12,"料理パワーアップS",[1,2,5,7],[13,4,7],[17,5]],["レントラー","食材",20,"料理パワーアップS",[1,2,5,7],[13,4,7],[17,5]],["フワンテ","スキル",5,"たくわえる (エナジーチャージS)",[12,1,2,4],[13,3,4],[2,4]],["フワライド","スキル",12,"たくわえる (エナジーチャージS)",[12,1,2,4],[13,3,4],[2,4]],["ドンカラス","スキル",20,"きょううん (食材セレクトS)",[17,1,2,4],[8,3,6],[5,4]],["ウソハチ","スキル",5,"エナジーチャージM",[1,1,2,4],[8,2,4],[15,2]],["マネネ","食材",5,"ものまね (スキルコピー)",[1,2,5,7],[2,4,6],[14,4]],["ピンプク","食材",5,"げんきオールS",[10,2,5,7],[2,4,7],[0,8]],["ミカルゲ","食材",16,"おてつだいサポートS",[15,2,5,7],[11,3,5],[14,6]],["リオル","スキル",5,"ゆめのかけらゲットS",[13,1,2,4],[2,2,4],[10,4]],["ルカリオ","スキル",20,"はどうだん (ゆめのかけらゲットS)",[13,1,2,4],[2,2,4],[10,4]],["グレッグル","食材",5,"エナジーチャージS",[13,2,5,7],[3,5,8],null],["ドクロッグ","食材",12,"エナジーチャージS",[13,2,5,7],[3,5,8],null],["ユキカブリ","食材",5,"エナジーチャージS (ランダム)",[1,2,5,7],[10,4,7],[15,5]],["ユキノオー","食材",12,"エナジーチャージS (ランダム)",[1,2,5,7],[10,4,7],[15,5]],["マニューラ","きのみ",20,"料理チャンスS",[3,1,2,4],[10,2,3],[8,4]],["ジバコイル","スキル",22,"料理パワーアップS",[13,1,2,4],[5,2,3],null],["トゲキッス","スキル",22,"ゆびをふる",[10,1,2,4],[4,2,4],[7,3]],["リーフィア","スキル",20,"げんきエールS",[6,1,2,4],[7,1,2],[3,3]],["グレイシア","スキル",20,"料理パワーアップS",[6,1,2,4],[7,1,2],[3,3]],["エルレイド","スキル",22,"おてつだいサポートS",[9,1,2,4],[12,1,2],[14,2]],["クレセリア","スキル",30,"みかづきのいのり (げんきオールS)",[4,1,2,4],[7,2,3],[1,4]],["ダークライ","オール",30,"ナイトメア (エナジーチャージM)",[3,2,0,0],[-1,0,0],[-1,0]],["ムンナ","きのみ",5,"ゆめのかけらゲットS (ランダム)",[6,1,2,4],[0,2,3],[17,2]],["ムシャーナ","きのみ",20,"ゆめのかけらゲットS (ランダム)",[6,1,2,4],[0,2,3],[17,2]],["イシズマイ","スキル",5,"食材セレクトS",[18,1,2,4],[2,3,5],[13,5]],["イワパレス","スキル",12,"食材セレクトS",[18,1,2,4],[2,3,5],[13,5]],["ワシボン","スキル",5,"きのみバースト",[3,1,2,4],[12,2,3],[17,2]],["ウォーグル","スキル",12,"きのみバースト",[3,1,2,4],[12,2,3],[17,2]],["チゴラス","きのみ",5,"料理パワーアップS",[3,1,2,4],[9,3,4],[2,3]],["ガチゴラス","きのみ",20,"料理パワーアップS",[3,1,2,4],[9,3,4],[2,3]],["ニンフィア","スキル",20,"げんきオールS",[6,1,2,4],[7,1,2],[3,3]],["ルチャブル","スキル",16,"食材セレクトS",[5,1,2,4],[4,3,4],[3,5]],["デデンネ","スキル",16,"料理チャンスS",[9,1,2,4],[7,1,2],[12,2]],["バケッチャ (こだましゅ)","食材",5,"エナジーチャージS",[11,2,5,7],[8,11,18],[2,15]],["バケッチャ (ちゅうだましゅ)","食材",5,"エナジーチャージS",[11,2,5,7],[8,11,18],[2,15]],["バケッチャ (おおだましゅ)","食材",5,"エナジーチャージS",[11,2,5,7],[8,11,18],[2,15]],["バケッチャ (ギガだましゅ)","食材",5,"エナジーチャージS",[11,2,5,7],[8,11,18],[2,15]],["パンプジン (こだましゅ)","食材",20,"エナジーチャージS",[11,2,5,7],[8,11,18],[2,15]],["パンプジン (ちゅうだましゅ)","食材",20,"エナジーチャージS",[11,2,5,7],[8,11,18],[2,15]],["パンプジン (おおだましゅ)","食材",20,"エナジーチャージS",[11,2,5,7],[8,11,18],[2,15]],["パンプジン (ギガだましゅ)","食材",20,"エナジーチャージS",[11,2,5,7],[8,11,18],[2,15]],["オンバット","スキル",5,"エナジーチャージM",[9,1,2,4],[14,1,2],[3,3]],["オンバーン","スキル",12,"エナジーチャージM",[9,1,2,4],[14,1,2],[3,3]],["アゴジムシ","食材",5,"エナジーチャージS",[17,2,5,7],[15,4,7],[0,11]],["デンヂムシ","食材",12,"エナジーチャージS",[17,2,5,7],[15,4,7],[0,11]],["クワガノン","食材",22,"エナジーチャージS",[17,2,5,7],[15,4,7],[0,11]],["アブリー","食材",5,"食材セレクトS",[0,2,5,7],[13,4,6],[12,5]],["アブリボン","食材",12,"食材セレクトS",[0,2,5,7],[13,4,6],[12,5]],["ヌイコグマ","食材",5,"エナジーチャージS (ランダム)",[12,2,5,7],[3,6,10],[10,9]],["キテルグマ","食材",12,"エナジーチャージS (ランダム)",[12,2,5,7],[3,6,10],[10,9]],["キュワワー","食材",16,"げんきエールS",[12,2,5,7],[4,6,9],[7,7]],["トゲデマル","スキル",16,"ほっぺすりすり (げんきエールS)",[6,1,2,4],[18,1,2],[7,2]],["ミミッキュ","スキル",16,"ばけのかわ (きのみバースト)",[9,1,2,4],[17,1,2],[15,2]],["ジジーロン","食材",16,"料理チャンスS",[8,2,5,7],[18,3,4],[3,7]],["ウッウ","食材",16,"料理チャンスS",[13,2,5,7],[2,4,7],[10,8]],["エレズン","スキル",5,"食材ゲットS",[6,1,2,4],[9,2,4],[14,2]],["ストリンダー (ハイ)","スキル",20,"プラス (食材ゲットS)",[6,1,2,4],[9,2,4],[14,2]],["ストリンダー (ロー)","スキル",20,"マイナス (料理パワーアップS)",[6,1,2,4],[9,2,4],[14,2]],["ニャオハ","食材",5,"料理パワーアップS",[2,2,5,7],[6,6,9],[4,8]],["ニャローテ","食材",12,"料理パワーアップS",[2,2,5,7],[6,6,9],[4,8]],["マスカーニャ","食材",20,"料理パワーアップS",[2,2,5,7],[6,6,9],[4,8]],["ホゲータ","食材",5,"げんきチャージS",[9,2,5,7],[3,4,6],[5,5]],["アチゲータ","食材",12,"げんきチャージS",[9,2,5,7],[3,4,6],[5,5]],["ラウドボーン","食材",20,"げんきチャージS",[9,2,5,7],[3,4,6],[5,5]],["クワッス","食材",5,"エナジーチャージM",[8,2,5,7],[14,2,4],[13,6]],["ウェルカモ","食材",12,"エナジーチャージM",[8,2,5,7],[14,2,4],[13,6]],["ウェーニバル","食材",20,"エナジーチャージM",[8,2,5,7],[14,2,4],[13,6]],["パモ","スキル",5,"げんきオールS",[7,1,2,4],[6,3,6],[10,5]],["パモット","スキル",12,"げんきオールS",[7,1,2,4],[6,3,6],[10,5]],["パーモット","スキル",22,"げんきオールS",[7,1,2,4],[6,3,6],[10,5]],["カヌチャン","きのみ",5,"エナジーチャージM",[1,1,2,4],[7,2,3],[2,3]],["ナカヌチャン","きのみ",12,"エナジーチャージM",[1,1,2,4],[7,2,3],[2,3]],["デカヌチャン","きのみ",20,"エナジーチャージM",[1,1,2,4],[7,2,3],[2,3]],["アルクジラ","食材",5,"げんきチャージS",[2,2,5,7],[3,5,9],[11,4]],["ハルクジラ","食材",20,"げんきチャージS",[2,2,5,7],[3,5,9],[11,4]],["ドオー","食材",12,"げんきチャージS",[7,2,5,7],[17,4,7],[2,9]]];
+
+/* せいかく25種。「名前|アップする効果の番号|ダウンする効果の番号」
+   番号 0=なし 1=げんき回復量 2=EXP獲得量 3=おてつだいスピード 4=メインスキル発生確率 5=食材おてつだい確率 */
+var EFF = ["補正なし","げんき回復量","EXP獲得量","おてつだいスピード","メインスキル発生確率","食材おてつだい確率"];
+var NAT_RAW = "てれや|0|0,がんばりや|0|0,すなお|0|0,きまぐれ|0|0,まじめ|0|0," +
+  "ずぶとい|1|3,わんぱく|1|5,のうてんき|1|4,のんき|1|2," +
+  "おくびょう|2|3,せっかち|2|1,ようき|2|5,むじゃき|2|4," +
+  "さみしがり|3|1,いじっぱり|3|5,やんちゃ|3|4,ゆうかん|3|2," +
+  "おだやか|4|3,おとなしい|4|1,しんちょう|4|5,なまいき|4|2," +
+  "ひかえめ|5|3,おっとり|5|1,うっかりや|5|4,れいせい|5|2";
+
+/* サブスキル17種。r=レア度（g金/b青/w白） w=1枠あたりの出る確率(%)
+   up = 銀種で格上げしたときに何になるか（SUBS の番号）。無いものは -1。 */
+var SUBS = [
+  { n:"きのみの数S",        r:"g", w:2,    up:-1 },
+  { n:"おてつだいボーナス",  r:"g", w:2,    up:-1 },
+  { n:"げんき回復ボーナス",  r:"g", w:2,    up:-1 },
+  { n:"スキルレベルアップM", r:"g", w:2,    up:-1 },
+  { n:"ゆめのかけらボーナス",r:"g", w:2,    up:-1 },
+  { n:"リサーチEXPボーナス", r:"g", w:2,    up:-1 },
+  { n:"睡眠EXPボーナス",     r:"g", w:2,    up:-1 },
+  { n:"おてつだいスピードM", r:"b", w:6,    up:-1 },
+  { n:"食材確率アップM",     r:"b", w:6,    up:-1 },
+  { n:"スキル確率アップM",   r:"b", w:6,    up:-1 },
+  { n:"最大所持数アップL",   r:"b", w:6,    up:-1 },
+  { n:"最大所持数アップM",   r:"b", w:6,    up:10 },   /* → 最大所持数アップL */
+  { n:"スキルレベルアップS", r:"b", w:6,    up:3  },   /* → スキルレベルアップM（金） */
+  { n:"おてつだいスピードS", r:"w", w:12.5, up:7  },   /* → おてつだいスピードM */
+  { n:"食材確率アップS",     r:"w", w:12.5, up:8  },   /* → 食材確率アップM */
+  { n:"スキル確率アップS",   r:"w", w:12.5, up:9  },   /* → スキル確率アップM */
+  { n:"最大所持数アップS",   r:"w", w:12.5, up:11 }    /* → 最大所持数アップM */
+];
+var LV_SUB = ["Lv10","Lv25","Lv50","Lv75","Lv100"];   /* 枠が開くレベル */
+
+var HIDE = ["ミュウ", "ダークライ"];
+var MONS = MON_DATA.filter(function(a){ return HIDE.indexOf(a[0]) === -1; }).map(function(a){
+  return { name:a[0], tokui:a[1], skill:a[3], i1:a[4], i2:a[5], i3:a[6] };
+});
+var NATS = NAT_RAW.split(",").map(function(s){
+  var a = s.split("|");
+  return { name:a[0], up:Number(a[1]), dn:Number(a[2]) };
+});
+var GOLD_IDX = [];
+for(var gi=0; gi<SUBS.length; gi++){ if(SUBS[gi].r === "g") GOLD_IDX.push(gi); }
+
+/* =========================================================================
+   2. 入力の状態（ブラウザに保存して、次に開いたときも残す）
+   ========================================================================= */
+var SAVE_KEY = "pksl-gensen-shindan-v1";
+var S = {
+  monIndex: 0,
+  gold: 0,          /* 金枠確定の数 0〜3 */
+  want: [],         /* [{id:サブスキル番号, max:0(枠数まで) or 1〜5}] */
+  seeds: 1,         /* 銀種を何個まで使うか 0〜3 */
+  natUp: 0,         /* 上がってほしい補正 0=こだわらない */
+  natDn: [],        /* 下がったらイヤな補正の番号 */
+  ing: "any",       /* 食材の並び */
+  k: 3              /* 大きく表示する枠数 2〜5 */
+};
+function save(){ try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch(e){} }
+function load(){
+  try {
+    var d = JSON.parse(localStorage.getItem(SAVE_KEY) || "null");
+    if(d){ for(var k in S){ if(d[k] !== undefined) S[k] = d[k]; } }
+  } catch(e){}
+  if(!MONS[S.monIndex]) S.monIndex = 0;
+  S.want = (S.want || []).filter(function(w){ return SUBS[w.id]; });
+}
+
+/* =========================================================================
+   3. 画面の部品
+   ========================================================================= */
+function $(id){ return document.getElementById(id); }
+function currentMon(){ return MONS[S.monIndex] || MONS[0]; }
+function has3rd(m){ return !!m.i3; }
+
+/* ① ポケモン */
+function buildMonSelect(){
+  var q = $("search").value.trim();
+  var sel = $("monsel"); sel.innerHTML = "";
+  var found = false;
+  MONS.forEach(function(m, i){
+    if(q && m.name.indexOf(q) === -1) return;
+    var o = document.createElement("option");
+    o.value = i; o.textContent = m.name + "（" + m.tokui + "）";
+    if(i === S.monIndex){ o.selected = true; found = true; }
+    sel.appendChild(o);
+  });
+  if(!found && sel.options.length){ S.monIndex = Number(sel.options[0].value); }
+  updateMonInfo();
+}
+function updateMonInfo(){
+  var m = currentMon();
+  $("moninfo").textContent = m.name + "：とくい＝" + m.tokui + " ／ メインスキル＝" + m.skill +
+    " ／ 食材の候補＝" + (has3rd(m) ? "3種（3枠目は A/B/C）" : "2種（3枠目は A/B）");
+  buildIngSelect();
+}
+
+/* ② 金枠確定 */
+var GOLD_LABEL = ["なし", "1つ（Lv10枠）", "2つ（Lv25まで）", "3つ（Lv50まで）"];
+function buildGoldChips(){
+  var box = $("goldchips"); box.innerHTML = "";
+  GOLD_LABEL.forEach(function(t, i){
+    var b = document.createElement("button");
+    b.className = "chip" + (S.gold === i ? " on" : ""); b.textContent = t;
+    b.onclick = function(){ S.gold = i; buildGoldChips(); changed(); };
+    box.appendChild(b);
+  });
+}
+
+/* ③ サブスキル */
+function isWanted(id){ return S.want.some(function(w){ return w.id === id; }); }
+function buildSubGrid(){
+  ["g","b","w"].forEach(function(r){
+    var box = $("grid-" + r); box.innerHTML = "";
+    SUBS.forEach(function(s, i){
+      if(s.r !== r) return;
+      var b = document.createElement("button");
+      b.className = "sb " + r + (isWanted(i) ? " on" : ""); b.textContent = s.n;
+      b.onclick = function(){
+        if(isWanted(i)) S.want = S.want.filter(function(w){ return w.id !== i; });
+        else if(S.want.length >= 5) { flash("欲しいサブスキルは5つまでです（枠が5つしかないので）"); return; }
+        else S.want.push({ id:i, max:0 });
+        buildSubGrid(); buildWantList(); changed();
+      };
+      box.appendChild(b);
+    });
+  });
+}
+function buildWantList(){
+  var box = $("wantlist"); box.innerHTML = "";
+  if(!S.want.length){
+    box.innerHTML = '<div class="empty">まだ何も選んでいません。上のボタンを押して、欲しいサブスキルを選んでください。</div>';
+    return;
+  }
+  S.want.forEach(function(w, idx){
+    var s = SUBS[w.id];
+    var d = document.createElement("div"); d.className = "want";
+    var nm = document.createElement("span"); nm.className = "nm " + s.r; nm.textContent = s.n;
+    var lab = document.createElement("span"); lab.textContent = "この枠までに："; lab.style.fontSize = "12.5px";
+    var sel = document.createElement("select");
+    var opts = [["0","枠数まで"],["1","Lv10 の枠"],["2","Lv25 まで"],["3","Lv50 まで"],["4","Lv75 まで"],["5","Lv100 まで"]];
+    opts.forEach(function(o){
+      var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1];
+      if(String(w.max) === o[0]) op.selected = true; sel.appendChild(op);
+    });
+    sel.onchange = function(){ w.max = Number(sel.value); changed(); };
+    var del = document.createElement("button"); del.className = "del"; del.textContent = "✕ はずす";
+    del.onclick = function(){ S.want.splice(idx, 1); buildSubGrid(); buildWantList(); changed(); };
+    d.appendChild(nm); d.appendChild(lab); d.appendChild(sel); d.appendChild(del);
+    box.appendChild(d);
+  });
+}
+
+/* ④ 銀種 */
+var SEED_LABEL = ["使わない", "1個まで", "2個まで", "3個まで"];
+function buildSeedChips(){
+  var box = $("seedchips"); box.innerHTML = "";
+  SEED_LABEL.forEach(function(t, i){
+    var b = document.createElement("button");
+    b.className = "chip" + (S.seeds === i ? " on" : ""); b.textContent = t;
+    b.onclick = function(){ S.seeds = i; buildSeedChips(); changed(); };
+    box.appendChild(b);
+  });
+}
+
+/* ⑤ せいかく */
+function buildNature(){
+  var up = $("natup"); up.innerHTML = "";
+  ["こだわらない","げんき回復量","EXP獲得量","おてつだいスピード","メインスキル発生確率","食材おてつだい確率"].forEach(function(t, i){
+    var o = document.createElement("option"); o.value = i; o.textContent = (i ? t + " が上がる" : t);
+    if(S.natUp === i) o.selected = true; up.appendChild(o);
+  });
+  up.onchange = function(){ S.natUp = Number(up.value); changed(); };
+  var dn = $("natdn"); dn.innerHTML = "";
+  for(var i=1; i<=5; i++){
+    (function(i){
+      var l = document.createElement("label");
+      var c = document.createElement("input"); c.type = "checkbox"; c.checked = S.natDn.indexOf(i) !== -1;
+      c.onchange = function(){
+        if(c.checked){ if(S.natDn.indexOf(i) === -1) S.natDn.push(i); }
+        else S.natDn = S.natDn.filter(function(x){ return x !== i; });
+        changed();
+      };
+      l.appendChild(c); l.appendChild(document.createTextNode(EFF[i]));
+      dn.appendChild(l);
+    })(i);
+  }
+}
+/* 条件に合うせいかくの一覧 */
+function okNatures(){
+  return NATS.filter(function(n){
+    if(S.natUp && n.up !== S.natUp) return false;
+    if(S.natDn.indexOf(n.dn) !== -1) return false;
+    return true;
+  });
+}
+function updateNatInfo(){
+  var ok = okNatures();
+  $("natinfo").textContent = "当たりのせいかく：" + ok.length + "種 ／ 25種（" +
+    (ok.length ? ok.map(function(n){ return n.name; }).join("・") : "なし") + "）";
+}
+
+/* ⑥ 食材 */
+function buildIngSelect(){
+  var m = currentMon();
+  var sel = $("ingsel"); sel.innerHTML = "";
+  var opts = [["any","こだわらない"],["A_","2枠目が A（AA◯）"],["B_","2枠目が B（AB◯）"],
+              ["AAA","AAA"],["AAB","AAB"],["ABA","ABA"],["ABB","ABB"]];
+  if(has3rd(m)) opts.push(["AAC","AAC"],["ABC","ABC"]);
+  var found = false;
+  opts.forEach(function(o){
+    var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1];
+    if(S.ing === o[0]){ op.selected = true; found = true; } sel.appendChild(op);
+  });
+  if(!found) S.ing = "any";
+  sel.onchange = function(){ S.ing = sel.value; changed(); };
+  updateIngInfo();
+}
+/* 食材の並びの確率。2枠目 A=1/3 B=2/3。3枠目は候補3種なら1/3ずつ、2種なら A=1/3 B=2/3 */
+function ingProb(){
+  var m = currentMon(), v = S.ing;
+  if(v === "any") return 1;
+  if(v === "A_") return 1/3;
+  if(v === "B_") return 2/3;
+  var p2 = (v.charAt(1) === "A") ? 1/3 : 2/3;
+  var c3 = v.charAt(2), p3;
+  if(has3rd(m)) p3 = 1/3;
+  else p3 = (c3 === "A") ? 1/3 : 2/3;
+  return p2 * p3;
+}
+function updateIngInfo(){
+  var p = ingProb();
+  $("inginfo").textContent = (S.ing === "any") ? "食材はこだわりません（確率 100%）" :
+    "この並びになる確率：" + pct(p) + "（" + fracText(p) + "）";
+}
+
+/* 診断結果の「枠数」チップ */
+function buildKChips(){
+  var box = $("kchips"); box.innerHTML = "";
+  [2,3,4,5].forEach(function(k){
+    var b = document.createElement("button");
+    b.className = "chip" + (S.k === k ? " on" : ""); b.textContent = k + "枠（" + LV_SUB[k-1] + "まで）";
+    b.onclick = function(){ S.k = k; buildKChips(); save(); renderResult(); };
+    box.appendChild(b);
+  });
+}
+
+/* =========================================================================
+   4. 計算本体
+      サブスキル5枠の並び（17×16×15×14×13 ≒ 74万通り）を確率つきで全部たどり、
+      条件を満たす（銀種で満たせる）確率を足し合わせる。
+   ========================================================================= */
+var UP = SUBS.map(function(s){ return s.up; });
+var W  = SUBS.map(function(s){ return s.w; });
+var WSUM = W.reduce(function(a, b){ return a + b; }, 0);
+
+/* 並び seq（5つの番号）が、枠数 K の条件を満たしているか */
+function satisfied(seq, want, K){
+  for(var a=0; a<want.length; a++){
+    var w = want[a], lim = Math.min(K, w.max || K), ok = false;
+    for(var i=0; i<lim; i++){ if(seq[i] === w.id){ ok = true; break; } }
+    if(!ok) return false;
+  }
+  return true;
+}
+/* 満たしていない条件それぞれについて、「格上げすればそれになる」サブスキル（元）が
+   見る範囲の枠に入っているか。1つでも届かない条件があれば、銀種を何個使ってもムリ。 */
+function reachable(seq, want, K){
+  for(var a=0; a<want.length; a++){
+    var w = want[a], lim = Math.min(K, w.max || K), ok = false, i;
+    for(i=0; i<lim; i++){ if(seq[i] === w.id){ ok = true; break; } }
+    if(ok) continue;
+    if(seq.indexOf(w.id) !== -1) return false;   /* 見えない枠に既にある＝重複になるので上げられない */
+    for(i=0; i<lim; i++){ if(UP[seq[i]] === w.id){ ok = true; break; } }
+    if(!ok) return false;
+  }
+  return true;
+}
+/* 満たしていない条件の数 */
+function unmetCount(seq, want, K){
+  var c = 0;
+  for(var a=0; a<want.length; a++){
+    var w = want[a], lim = Math.min(K, w.max || K), ok = false;
+    for(var i=0; i<lim; i++){ if(seq[i] === w.id){ ok = true; break; } }
+    if(!ok) c++;
+  }
+  return c;
+}
+/* 銀種を使って条件を満たせる「いちばん高い確率」を、使う個数ごとにまとめて返す。
+   戻り値 v[s] = 銀種を s 個まで使ってよいときの成功確率（s=0〜seeds）。
+   minU = 前に使ったときの解放枠数（レベルは下がらないので、これ以上でしか使えない）。
+   使うタイミング（解放枠数 u）は自分で選べるので、u ごとに計算して最大を取る。
+   u のときの対象枠 = 上から u 枠のうち「格上げできて、結果が既に持っているものと重ならない」枠。
+   その中からランダムに1つが上がる。 */
+function bestVec(seq, want, K, seeds, minU){
+  var v = [], s;
+  for(s=0; s<=seeds; s++) v.push(0);
+  if(satisfied(seq, want, K)){ for(s=0; s<=seeds; s++) v[s] = 1; return v; }
+  if(seeds === 0) return v;
+  if(unmetCount(seq, want, K) > seeds) return v;   /* 1個で直せるのは1枠だけ */
+  if(!reachable(seq, want, K)) return v;           /* 格上げで届かない条件がある */
+  for(var u=Math.max(1, minU); u<=K; u++){
+    var elig = [];
+    for(var i=0; i<u; i++){
+      var t = UP[seq[i]];
+      if(t < 0) continue;
+      if(seq.indexOf(t) !== -1) continue;   /* 上げた結果が重なるので対象外 */
+      elig.push(i);
+    }
+    if(!elig.length) continue;
+    var sum = [];
+    for(s=0; s<seeds; s++) sum.push(0);
+    for(var e=0; e<elig.length; e++){
+      var i2 = elig[e];
+      var s2 = seq.slice(); s2[i2] = UP[seq[i2]];
+      var c = bestVec(s2, want, K, seeds - 1, u);
+      for(s=0; s<seeds; s++) sum[s] += c[s];
+    }
+    /* 銀種を s+1 個使える＝1個使ったあと s 個残る */
+    for(s=0; s<seeds; s++){
+      var pv = sum[s] / elig.length;
+      if(pv > v[s+1]) v[s+1] = pv;
+    }
+  }
+  return v;
+}
+
+/* 全パターンをたどって、枠数 K（2〜5）× 銀種 s（0〜seeds）ごとの当たり確率を返す
+   戻り値 res[K][s] */
+function computeAll(want, gold, seeds){
+  var res = {};
+  [2,3,4,5].forEach(function(K){ res[K] = []; for(var s=0; s<=seeds; s++) res[K].push(0); });
+  if(!want.length){
+    [2,3,4,5].forEach(function(K){ for(var s=0; s<=seeds; s++) res[K][s] = 1; });
+    return res;
+  }
+  var seq = [0,0,0,0,0], used = [];
+  for(var i=0; i<SUBS.length; i++) used.push(false);
+
+  /* 枠数が多いほど条件はゆるくなる（5枠でダメなら 4枠以下も必ずダメ）ので、
+     5枠から順に見て、ダメになったところで打ち切る */
+  function leaf(p){
+    if(unmetCount(seq, want, 5) > seeds) return;
+    if(seeds && !reachable(seq, want, 5) && !satisfied(seq, want, 5)) return;
+    for(var K=5; K>=2; K--){
+      var row = res[K], s;
+      if(satisfied(seq, want, K)){ for(s=0; s<=seeds; s++) row[s] += p; continue; }
+      if(seeds === 0) break;
+      var v = bestVec(seq, want, K, seeds, 1);
+      if(v[seeds] <= 0) break;
+      for(s=1; s<=seeds; s++) row[s] += p * v[s];
+    }
+  }
+  function rec(pos, p, rem){
+    if(pos === 5){ leaf(p); return; }
+    if(pos < gold){
+      var pool = [];
+      for(var a=0; a<GOLD_IDX.length; a++){ if(!used[GOLD_IDX[a]]) pool.push(GOLD_IDX[a]); }
+      for(var b=0; b<pool.length; b++){
+        var g = pool[b];
+        seq[pos] = g; used[g] = true;
+        rec(pos + 1, p / pool.length, rem - W[g]);
+        used[g] = false;
+      }
+      return;
+    }
+    for(var i=0; i<SUBS.length; i++){
+      if(used[i]) continue;
+      seq[pos] = i; used[i] = true;
+      rec(pos + 1, p * W[i] / rem, rem - W[i]);
+      used[i] = false;
+    }
+  }
+  rec(0, 1, WSUM);
+  return res;
+}
+
+/* =========================================================================
+   5. 数字の見せ方
+   ========================================================================= */
+function pct(p){
+  if(p >= 0.1) return (p * 100).toFixed(1) + "%";
+  if(p >= 0.01) return (p * 100).toFixed(2) + "%";
+  return (p * 100).toFixed(3) + "%";
+}
+function fracText(p){ return p > 0 ? "約 " + Math.round(1 / p) + " 体に 1 体" : "出ません"; }
+/* 「q の確率でここまでに1体は出ている」体数 */
+function lineN(p, q){
+  if(p <= 0) return Infinity;
+  if(p >= 1) return 1;
+  return Math.ceil(Math.log(1 - q) / Math.log(1 - p));
+}
+function fmtN(n){
+  if(n === Infinity) return "∞";
+  return n.toLocaleString("ja-JP");
+}
+
+var lastRes = null;   /* 直近の計算結果 res[K][s] */
+var calcTimer = null;
+
+function changed(){
+  save();
+  updateNatInfo(); updateIngInfo();
+  $("status").textContent = "計算中…";
+  $("result").style.opacity = ".4";
+  if(calcTimer) clearTimeout(calcTimer);
+  calcTimer = setTimeout(runCalc, 60);
+}
+function runCalc(){
+  var t0 = Date.now();
+  var want = S.want.map(function(w){ return { id:w.id, max:w.max }; });
+  lastRes = computeAll(want, S.gold, S.seeds);
+  var ms = Date.now() - t0;
+  $("result").style.opacity = "1";
+  $("status").textContent = "計算にかかった時間：" + ms + " ミリ秒（サイコロは振っていません。同じ入力なら毎回同じ数字です）";
+  renderResult();
+}
+
+function renderResult(){
+  var box = $("result");
+  if(!lastRes){ box.innerHTML = ""; return; }
+  var extra = (okNatures().length / NATS.length) * ingProb();
+  var K = S.k, s = S.seeds;
+  var pMain = lastRes[K][s] * extra;
+  var p0 = lastRes[K][0] * extra;
+
+  var condParts = [];
+  if(S.want.length) condParts.push(S.want.map(function(w){ return SUBS[w.id].n + (w.max ? "（" + LV_SUB[w.max-1] + "まで）" : ""); }).join("・") + " を " + K + "枠（" + LV_SUB[K-1] + "まで）に");
+  else condParts.push("サブスキルの条件なし");
+  if(S.natUp || S.natDn.length) condParts.push("せいかく " + okNatures().length + "/25種");
+  if(S.ing !== "any") condParts.push("食材 " + $("ingsel").options[$("ingsel").selectedIndex].textContent);
+  condParts.push(s ? "銀種 " + s + "個まで" : "銀種なし");
+
+  var h = '';
+  h += '<div class="bigbox">';
+  h += '<div class="lead">この個体は、たぶん</div>';
+  h += '<div class="big">' + fmtN(lineN(pMain, 0.5)) + ' <small>体目で出る</small></div>';
+  h += '<div class="lead">（50%の人は ここまでに1体は引けている）</div>';
+  h += '<div class="cond">' + condParts.join(" ／ ") + '</div>';
+  h += '</div>';
+
+  h += '<div class="tiles">';
+  h += tile("1体あたりの当たり", pct(pMain), fracText(pMain));
+  h += tile("80%ライン", fmtN(lineN(pMain, 0.8)) + '<small> 体</small>', "80%の人はここまでに出る");
+  h += tile("90%ライン", fmtN(lineN(pMain, 0.9)) + '<small> 体</small>', "90%の人はここまでに出る");
+  h += tile("99%ライン", fmtN(lineN(pMain, 0.99)) + '<small> 体</small>', "ほぼ確実");
+  if(s && p0 > 0 && pMain > p0){
+    h += tile("銀種なしだと", fmtN(lineN(p0, 0.5)) + '<small> 体目</small>', "銀種で " + (pMain / p0).toFixed(1) + " 倍 出やすくなる");
+  } else if(s && p0 === 0 && pMain > 0){
+    h += tile("銀種なしだと", "∞", "銀種が無いと出ない条件です");
+  }
+  h += '</div>';
+
+  /* 表：行＝銀種の個数、列＝枠数。中は80%ライン（小さく1体あたりの確率） */
+  h += '<div class="tablewrap"><table><thead><tr><th>80%ライン</th>';
+  [2,3,4,5].forEach(function(k){ h += '<th>' + k + '枠<br>' + LV_SUB[k-1] + 'まで</th>'; });
+  h += '</tr></thead><tbody>';
+  for(var si=0; si<=s; si++){
+    h += '<tr><th>' + (si ? "銀種 " + si + "個" : "銀種なし") + '</th>';
+    [2,3,4,5].forEach(function(k){
+      var p = lastRes[k][si] * extra;
+      var cls = (k === K && si === s) ? ' class="main"' : (p <= 0 ? ' class="na"' : '');
+      h += '<td' + cls + '>' + fmtN(lineN(p, 0.8)) + ' 体<span class="p">' + pct(p) + '</span></td>';
+    });
+    h += '</tr>';
+  }
+  h += '</tbody></table></div>';
+  h += '<ul class="legend"><li>「○枠」は、サブスキルを上から何枠まで見るか。3枠＝Lv50までに解放される3つ。</li>' +
+       '<li>色つきのマスが、上の大きな数字と同じ条件です。「銀種 n個」の行は「n個まで使ってよい」場合の数字です。</li></ul>';
+  box.innerHTML = h;
+}
+function tile(k, v, note){
+  return '<div class="tile"><div class="k">' + k + '</div><div class="v">' + v + '</div>' +
+         (note ? '<div class="k">' + note + '</div>' : '') + '</div>';
+}
+function flash(msg){ $("status").textContent = msg; }
+
+/* =========================================================================
+   6. 起動
+   ========================================================================= */
+load();
+buildMonSelect();
+buildGoldChips();
+buildSubGrid();
+buildWantList();
+buildSeedChips();
+buildNature();
+buildKChips();
+$("search").addEventListener("input", buildMonSelect);
+$("monsel").addEventListener("change", function(){ S.monIndex = Number($("monsel").value); updateMonInfo(); changed(); });
+changed();
+</script>
+</body>
+</html>
