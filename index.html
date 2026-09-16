@@ -327,7 +327,7 @@ var SUBS = [
   { n:"スキル確率アップS",   r:"w", w:12.5, up:9  },   /* → スキル確率アップM */
   { n:"最大所持数アップS",   r:"w", w:12.5, up:11 }    /* → 最大所持数アップM */
 ];
-var LV_SUB = ["Lv10","Lv25","Lv50","Lv75","Lv100"];   /* 枠が開くレベル */
+var LV_SUB = ["Lv10","Lv25","Lv50","Lv70","Lv80"];   /* 枠が開くレベル（Ver.3.6.0 で Lv75→70、Lv100→80 に変更） */
 
 var HIDE = ["ミュウ", "ダークライ"];
 var MONS = MON_DATA.filter(function(a){ return HIDE.indexOf(a[0]) === -1; }).map(function(a){
@@ -495,7 +495,7 @@ function buildWantList(){
     }
     var lab = document.createElement("span"); lab.textContent = "この枠までに：";
     var sel = document.createElement("select");
-    var opts = [["0","枠数まで"],["1","Lv10 の枠"],["2","Lv25 まで"],["3","Lv50 まで"],["4","Lv75 まで"],["5","Lv100 まで"]];
+    var opts = [["0","枠数まで"],["1","Lv10 の枠"],["2","Lv25 まで"],["3","Lv50 まで"],["4","Lv70 まで"],["5","Lv80 まで"]];
     opts.forEach(function(o){
       var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1];
       if(String(w.max) === o[0]) op.selected = true; sel.appendChild(op);
