@@ -133,9 +133,17 @@ input[type=text]:focus, select:focus{ outline:none; border-color:var(--accent); 
   display:flex; align-items:center; gap:8px; flex-wrap:wrap;
   background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:6px 8px;
 }
-.want .nm{ flex:1 1 140px; font-size:14px; }
+.want .items{ flex:1 1 200px; display:flex; align-items:center; gap:4px 6px; flex-wrap:wrap; }
+.want .nm{ font-size:14px; display:inline-flex; align-items:center; gap:2px; }
 .want .nm.g{ color:var(--gold); } .want .nm.b{ color:var(--blue); } .want .nm.w{ color:var(--white); }
+.want .nm .x{
+  font-family:inherit; font-size:12px; border:none; background:transparent; color:inherit; opacity:.6; cursor:pointer; padding:0 2px;
+}
+.want .nm .x:hover{ opacity:1; }
+.want .or{ font-size:12px; color:var(--text-faint); }
+.want .ctrl{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:12.5px; }
 .want select{ width:auto; font-size:13px; padding:5px 8px; }
+.want select.addor{ color:var(--accent); border-style:dashed; }
 .want .del{
   font-family:inherit; font-size:13px; border:none; background:transparent; color:var(--bad); cursor:pointer; padding:4px 6px;
 }
@@ -214,7 +222,8 @@ footer{ text-align:center; font-size:11.5px; color:var(--text-faint); margin-top
   <div class="rarelabel">白（1枠あたり 12.5%）</div>
   <div class="subgrid" id="grid-w"></div>
   <div class="wantlist" id="wantlist"></div>
-  <p class="hint">「この枠までに」を変えると、たとえば「きのみの数S は Lv25 までに欲しい」のような指定ができます。ふだんは「枠数まで」のままで大丈夫です。</p>
+  <p class="hint">ボタンを押すと1行ずつ増え、<b>行はぜんぶ必要</b>（＆）です。行の中の「＋ または…」から足すと、<b>そのうちどれかでよい</b>（または）になります。
+    「この枠までに」を変えると、たとえば「きのみの数S は Lv25 までに欲しい」のような指定ができます。</p>
 </section>
 
 <!-- ④ 銀種 -->
@@ -338,7 +347,8 @@ var SAVE_KEY = "pksl-gensen-shindan-v1";
 var S = {
   monIndex: 0,
   gold: 0,          /* 金枠確定の数 0〜3 */
-  want: [],         /* [{id:サブスキル番号, max:0(枠数まで) or 1〜5}] */
+  want: [],         /* 条件の行の一覧。1行 = {ids:[サブスキル番号...], need:このうち何個以上, max:0(枠数まで) or 1〜5}
+                       ids が1つなら「これが欲しい」、2つ以上なら「このうち need 個以上」（または検索） */
   seeds: 1,         /* 銀種を何個まで使うか 0〜3 */
   natUp: 0,         /* 上がってほしい補正 0=こだわらない */
   natDn: [],        /* 下がったらイヤな補正の番号 */
@@ -352,7 +362,16 @@ function load(){
     if(d){ for(var k in S){ if(d[k] !== undefined) S[k] = d[k]; } }
   } catch(e){}
   if(!MONS[S.monIndex]) S.monIndex = 0;
-  S.want = (S.want || []).filter(function(w){ return SUBS[w.id]; });
+  /* 古い保存（{id:番号}）は新しい形（{ids:[番号]}）に直す */
+  S.want = (S.want || []).map(function(w){
+    if(w.ids) return w;
+    return { ids:[w.id], need:1, max:w.max || 0 };
+  }).filter(function(w){
+    w.ids = w.ids.filter(function(id){ return !!SUBS[id]; });
+    if(!w.need || w.need < 1) w.need = 1;
+    if(w.need > w.ids.length) w.need = w.ids.length;
+    return w.ids.length > 0;
+  });
 }
 
 /* =========================================================================
@@ -397,7 +416,20 @@ function buildGoldChips(){
 }
 
 /* ③ サブスキル */
-function isWanted(id){ return S.want.some(function(w){ return w.id === id; }); }
+/* そのサブスキルが、どこかの行に入っているか（入っていれば行の番号、なければ -1） */
+function wantRowOf(id){
+  for(var a=0; a<S.want.length; a++){ if(S.want[a].ids.indexOf(id) !== -1) return a; }
+  return -1;
+}
+function isWanted(id){ return wantRowOf(id) !== -1; }
+/* 行から1つ取り除く。空になった行は消す */
+function removeFromWant(id){
+  var a = wantRowOf(id); if(a === -1) return;
+  var w = S.want[a];
+  w.ids = w.ids.filter(function(x){ return x !== id; });
+  if(!w.ids.length) S.want.splice(a, 1);
+  else if(w.need > w.ids.length) w.need = w.ids.length;
+}
 function buildSubGrid(){
   ["g","b","w"].forEach(function(r){
     var box = $("grid-" + r); box.innerHTML = "";
@@ -406,9 +438,9 @@ function buildSubGrid(){
       var b = document.createElement("button");
       b.className = "sb " + r + (isWanted(i) ? " on" : ""); b.textContent = s.n;
       b.onclick = function(){
-        if(isWanted(i)) S.want = S.want.filter(function(w){ return w.id !== i; });
-        else if(S.want.length >= 5) { flash("欲しいサブスキルは5つまでです（枠が5つしかないので）"); return; }
-        else S.want.push({ id:i, max:0 });
+        if(isWanted(i)) removeFromWant(i);
+        else if(S.want.length >= 5) { flash("条件の行は5つまでです（枠が5つしかないので）。「または」で1行にまとめることはできます"); return; }
+        else S.want.push({ ids:[i], need:1, max:0 });
         buildSubGrid(); buildWantList(); changed();
       };
       box.appendChild(b);
@@ -422,10 +454,46 @@ function buildWantList(){
     return;
   }
   S.want.forEach(function(w, idx){
-    var s = SUBS[w.id];
     var d = document.createElement("div"); d.className = "want";
-    var nm = document.createElement("span"); nm.className = "nm " + s.r; nm.textContent = s.n;
-    var lab = document.createElement("span"); lab.textContent = "この枠までに："; lab.style.fontSize = "12.5px";
+
+    /* 行に入っているサブスキル（2つ以上なら「または」でつなぐ） */
+    var items = document.createElement("div"); items.className = "items";
+    w.ids.forEach(function(id, j){
+      if(j){ var or = document.createElement("span"); or.className = "or"; or.textContent = "または"; items.appendChild(or); }
+      var s = SUBS[id];
+      var nm = document.createElement("span"); nm.className = "nm " + s.r; nm.textContent = s.n;
+      var x = document.createElement("button"); x.className = "x"; x.textContent = "✕"; x.title = "この1つだけはずす";
+      x.onclick = function(){ removeFromWant(id); buildSubGrid(); buildWantList(); changed(); };
+      nm.appendChild(x);
+      items.appendChild(nm);
+    });
+    /* 「＋ または…」：まだどの行にも入っていないサブスキルを、この行に足す */
+    var add = document.createElement("select"); add.className = "addor";
+    var op0 = document.createElement("option"); op0.value = ""; op0.textContent = "＋ または…"; add.appendChild(op0);
+    SUBS.forEach(function(s, id){
+      if(isWanted(id)) return;
+      var op = document.createElement("option"); op.value = id; op.textContent = s.n; add.appendChild(op);
+    });
+    add.onchange = function(){
+      if(add.value === "") return;
+      w.ids.push(Number(add.value));
+      buildSubGrid(); buildWantList(); changed();
+    };
+    items.appendChild(add);
+
+    /* 右側の設定：このうち何個以上／この枠までに／はずす */
+    var ctrl = document.createElement("div"); ctrl.className = "ctrl";
+    if(w.ids.length >= 2){
+      var lab0 = document.createElement("span"); lab0.textContent = "このうち";
+      var need = document.createElement("select");
+      for(var n=1; n<=w.ids.length; n++){
+        var opn = document.createElement("option"); opn.value = n; opn.textContent = n + "つ以上";
+        if(w.need === n) opn.selected = true; need.appendChild(opn);
+      }
+      need.onchange = function(){ w.need = Number(need.value); changed(); };
+      ctrl.appendChild(lab0); ctrl.appendChild(need);
+    }
+    var lab = document.createElement("span"); lab.textContent = "この枠までに：";
     var sel = document.createElement("select");
     var opts = [["0","枠数まで"],["1","Lv10 の枠"],["2","Lv25 まで"],["3","Lv50 まで"],["4","Lv75 まで"],["5","Lv100 まで"]];
     opts.forEach(function(o){
@@ -433,9 +501,11 @@ function buildWantList(){
       if(String(w.max) === o[0]) op.selected = true; sel.appendChild(op);
     });
     sel.onchange = function(){ w.max = Number(sel.value); changed(); };
-    var del = document.createElement("button"); del.className = "del"; del.textContent = "✕ はずす";
+    var del = document.createElement("button"); del.className = "del"; del.textContent = "✕ 行ごとはずす";
     del.onclick = function(){ S.want.splice(idx, 1); buildSubGrid(); buildWantList(); changed(); };
-    d.appendChild(nm); d.appendChild(lab); d.appendChild(sel); d.appendChild(del);
+    ctrl.appendChild(lab); ctrl.appendChild(sel); ctrl.appendChild(del);
+
+    d.appendChild(items); d.appendChild(ctrl);
     box.appendChild(d);
   });
 }
@@ -540,38 +610,51 @@ function buildKChips(){
       条件を満たす（銀種で満たせる）確率を足し合わせる。
    ========================================================================= */
 var UP = SUBS.map(function(s){ return s.up; });
+/* 番号 17 は「欲しい条件に関係のない金サブスキル」をまとめた仮の番号（下の computeAll を見てください） */
+var OTHER = 17;
+UP[OTHER] = -1;
 var W  = SUBS.map(function(s){ return s.w; });
 var WSUM = W.reduce(function(a, b){ return a + b; }, 0);
 
-/* 並び seq（5つの番号）が、枠数 K の条件を満たしているか */
+/* 条件の行 w（ids のうち need 個以上）について、見る範囲 lim 枠の中に ids がいくつ入っているか */
+function presentCount(seq, w, lim){
+  var c = 0;
+  for(var i=0; i<lim; i++){ if(w.ids.indexOf(seq[i]) !== -1) c++; }
+  return c;
+}
+/* 並び seq（5つの番号）が、枠数 K の条件を全部満たしているか */
 function satisfied(seq, want, K){
   for(var a=0; a<want.length; a++){
-    var w = want[a], lim = Math.min(K, w.max || K), ok = false;
-    for(var i=0; i<lim; i++){ if(seq[i] === w.id){ ok = true; break; } }
-    if(!ok) return false;
+    var w = want[a], lim = Math.min(K, w.max || K);
+    if(presentCount(seq, w, lim) < w.need) return false;
   }
   return true;
 }
-/* 満たしていない条件それぞれについて、「格上げすればそれになる」サブスキル（元）が
-   見る範囲の枠に入っているか。1つでも届かない条件があれば、銀種を何個使ってもムリ。 */
+/* 満たしていない行それぞれについて、「格上げすればそれになる」サブスキル（元）が
+   見る範囲の枠に足りるだけ入っているか。1行でも届かなければ、銀種を何個使ってもムリ。 */
 function reachable(seq, want, K){
   for(var a=0; a<want.length; a++){
-    var w = want[a], lim = Math.min(K, w.max || K), ok = false, i;
-    for(i=0; i<lim; i++){ if(seq[i] === w.id){ ok = true; break; } }
-    if(ok) continue;
-    if(seq.indexOf(w.id) !== -1) return false;   /* 見えない枠に既にある＝重複になるので上げられない */
-    for(i=0; i<lim; i++){ if(UP[seq[i]] === w.id){ ok = true; break; } }
-    if(!ok) return false;
+    var w = want[a], lim = Math.min(K, w.max || K);
+    var have = presentCount(seq, w, lim);
+    if(have >= w.need) continue;
+    var extra = 0;
+    for(var i=0; i<lim; i++){
+      var t = UP[seq[i]];
+      if(t < 0 || w.ids.indexOf(t) === -1) continue;
+      if(seq.indexOf(t) !== -1) continue;   /* 既にどこかにある＝重複になるので上げられない */
+      extra++;
+    }
+    if(have + extra < w.need) return false;
   }
   return true;
 }
-/* 満たしていない条件の数 */
+/* 満たすのに足りない数（銀種1個で埋められるのは1つだけ） */
 function unmetCount(seq, want, K){
   var c = 0;
   for(var a=0; a<want.length; a++){
-    var w = want[a], lim = Math.min(K, w.max || K), ok = false;
-    for(var i=0; i<lim; i++){ if(seq[i] === w.id){ ok = true; break; } }
-    if(!ok) c++;
+    var w = want[a], lim = Math.min(K, w.max || K);
+    var have = presentCount(seq, w, lim);
+    if(have < w.need) c += (w.need - have);
   }
   return c;
 }
@@ -588,7 +671,8 @@ function bestVec(seq, want, K, seeds, minU){
   if(seeds === 0) return v;
   if(unmetCount(seq, want, K) > seeds) return v;   /* 1個で直せるのは1枠だけ */
   if(!reachable(seq, want, K)) return v;           /* 格上げで届かない条件がある */
-  for(var u=Math.max(1, minU); u<=K; u++){
+  var u0 = Math.max(1, minU);
+  for(var u=u0; u<=K; u++){
     var elig = [];
     for(var i=0; i<u; i++){
       var t = UP[seq[i]];
@@ -597,6 +681,8 @@ function bestVec(seq, want, K, seeds, minU){
       elig.push(i);
     }
     if(!elig.length) continue;
+    /* 1つ前の u と対象枠が同じなら、結果も同じ（か悪くなる）だけなので飛ばす */
+    if(u > u0 && elig[elig.length - 1] !== u - 1) continue;
     var sum = [];
     for(s=0; s<seeds; s++) sum.push(0);
     for(var e=0; e<elig.length; e++){
@@ -626,6 +712,23 @@ function computeAll(want, gold, seeds){
   var seq = [0,0,0,0,0], used = [];
   for(var i=0; i<SUBS.length; i++) used.push(false);
 
+  /* 速くする工夫：欲しい条件に出てこない金サブスキル（きのみの数S など）は、
+     どれが出ても結果に影響しない（格上げの元にも先にもならない）ので、
+     1つ1つ区別せず「その他の金」（番号 OTHER）としてまとめて数える。
+     区別が必要なのは、条件に入っているもの・格上げできるもの・格上げの先になるもの。 */
+  var wantedIds = {};
+  want.forEach(function(w){ w.ids.forEach(function(id){ wantedIds[id] = true; }); });
+  var isTarget = {};
+  UP.forEach(function(t){ if(t >= 0) isTarget[t] = true; });
+  var indiv = [];        /* 1つ1つ区別して引く番号 */
+  var otherTotal = 0;    /* 「その他の金」の種類数 */
+  for(var j=0; j<SUBS.length; j++){
+    if(wantedIds[j] || UP[j] >= 0 || isTarget[j]) indiv.push(j);
+    else otherTotal++;   /* 残るのは金だけ（青・白は全部、格上げの元か先になっている） */
+  }
+  var otherLeft = otherTotal;
+  var OTHER_W = 2;       /* 金1種あたりの重み(%) */
+
   /* 枠数が多いほど条件はゆるくなる（5枠でダメなら 4枠以下も必ずダメ）ので、
      5枠から順に見て、ダメになったところで打ち切る */
   function leaf(p){
@@ -642,22 +745,39 @@ function computeAll(want, gold, seeds){
   }
   function rec(pos, p, rem){
     if(pos === 5){ leaf(p); return; }
+    var a, g;
     if(pos < gold){
-      var pool = [];
-      for(var a=0; a<GOLD_IDX.length; a++){ if(!used[GOLD_IDX[a]]) pool.push(GOLD_IDX[a]); }
-      for(var b=0; b<pool.length; b++){
-        var g = pool[b];
+      /* 金確定の枠：まだ出ていない金のどれかが同じ確率で入る */
+      var pool = [], n;
+      for(a=0; a<GOLD_IDX.length; a++){
+        g = GOLD_IDX[a];
+        if(indiv.indexOf(g) !== -1 && !used[g]) pool.push(g);
+      }
+      n = pool.length + otherLeft;
+      for(a=0; a<pool.length; a++){
+        g = pool[a];
         seq[pos] = g; used[g] = true;
-        rec(pos + 1, p / pool.length, rem - W[g]);
+        rec(pos + 1, p / n, rem - W[g]);
         used[g] = false;
+      }
+      if(otherLeft > 0){
+        seq[pos] = OTHER; otherLeft--;
+        rec(pos + 1, p * (otherLeft + 1) / n, rem - OTHER_W);
+        otherLeft++;
       }
       return;
     }
-    for(var i=0; i<SUBS.length; i++){
-      if(used[i]) continue;
-      seq[pos] = i; used[i] = true;
-      rec(pos + 1, p * W[i] / rem, rem - W[i]);
-      used[i] = false;
+    for(a=0; a<indiv.length; a++){
+      g = indiv[a];
+      if(used[g]) continue;
+      seq[pos] = g; used[g] = true;
+      rec(pos + 1, p * W[g] / rem, rem - W[g]);
+      used[g] = false;
+    }
+    if(otherLeft > 0){
+      seq[pos] = OTHER; otherLeft--;
+      rec(pos + 1, p * OTHER_W * (otherLeft + 1) / rem, rem - OTHER_W);
+      otherLeft++;
     }
   }
   rec(0, 1, WSUM);
@@ -697,7 +817,7 @@ function changed(){
 }
 function runCalc(){
   var t0 = Date.now();
-  var want = S.want.map(function(w){ return { id:w.id, max:w.max }; });
+  var want = S.want.map(function(w){ return { ids:w.ids.slice(), need:w.need, max:w.max }; });
   lastRes = computeAll(want, S.gold, S.seeds);
   var ms = Date.now() - t0;
   $("result").style.opacity = "1";
@@ -714,7 +834,11 @@ function renderResult(){
   var p0 = lastRes[K][0] * extra;
 
   var condParts = [];
-  if(S.want.length) condParts.push(S.want.map(function(w){ return SUBS[w.id].n + (w.max ? "（" + LV_SUB[w.max-1] + "まで）" : ""); }).join("・") + " を " + K + "枠（" + LV_SUB[K-1] + "まで）に");
+  if(S.want.length) condParts.push(S.want.map(function(w){
+    var t = w.ids.map(function(id){ return SUBS[id].n; }).join("／");
+    if(w.ids.length >= 2) t = "［" + t + " のうち" + w.need + "つ以上］";
+    return t + (w.max ? "（" + LV_SUB[w.max-1] + "まで）" : "");
+  }).join("・") + " を " + K + "枠（" + LV_SUB[K-1] + "まで）に");
   else condParts.push("サブスキルの条件なし");
   if(S.natUp || S.natDn.length) condParts.push("せいかく " + okNatures().length + "/25種");
   if(S.ing !== "any") condParts.push("食材 " + $("ingsel").options[$("ingsel").selectedIndex].textContent);
