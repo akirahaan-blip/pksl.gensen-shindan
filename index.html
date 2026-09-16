@@ -240,8 +240,13 @@ footer{ text-align:center; font-size:11.5px; color:var(--text-faint); margin-top
 
 <!-- ④ 銀種 -->
 <section class="card">
-  <h2>④ 銀種（サブスキルのたね）を何個まで使う？</h2>
-  <div class="chips" id="seedchips"></div>
+  <h2>④ 銀種（サブスキルのたね）</h2>
+  <div class="opts" style="margin-top:0; border-top:none">
+    <div class="optrow">
+      <div>銀種を使える<span class="sub">ON＝銀種1個で格上げすれば条件を満たせる個体も"当たり"に数える</span></div>
+      <button class="switch" id="seedsw"></button>
+    </div>
+  </div>
   <p class="hint">銀種は「解放済みの枠のうち、ランクを上げられるものを1つランダムに上げる」道具です。
     このツールは、いちばん狙いやすいレベルで使う前提で、<b>格上げすれば条件を満たせる個体も"当たり"に数えます</b>。
     上げられるのは S→M（おてつだいスピード・食材確率・スキル確率・最大所持数・スキルレベルアップ）と、最大所持数 M→L だけです。</p>
@@ -285,7 +290,7 @@ footer{ text-align:center; font-size:11.5px; color:var(--text-faint); margin-top
       <li>金枠確定は、確定した枠に金7種のどれかが同じ確率で入る、としています。</li>
       <li>「80%ライン」は「その体数まで捕まえれば、80%の人は1体は当たりを引けている」という数です。「たぶん○体目」は50%ラインです。</li>
       <li>せいかくは25種が同じ確率、食材は2枠目 A=1/3・B=2/3、3枠目は候補3種なら1/3ずつ（候補2種なら A=1/3・B=2/3）としています。</li>
-      <li>銀種は「そのとき解放されている枠の中で、上げられるものを1つランダムに上げる」「同じサブスキルは1匹に2つ持てないので、上げた結果が重なる枠は対象外」として計算しています。何個使えるかは公式に明記が無いため、個数はこの画面で選べるようにしています。</li>
+      <li>銀種は「そのとき解放されている枠の中で、上げられるものを1つランダムに上げる」「同じサブスキルは1匹に2つ持てないので、上げた結果が重なる枠は対象外」として計算しています。ONのときは、1匹に銀種を1個使う前提です。</li>
       <li>サイコロを振らずに全パターンを確率つきで数えているので、同じ入力なら毎回同じ数字が出ます。</li>
     </ul>
   </details>
@@ -362,7 +367,7 @@ var S = {
   sel: [],          /* チェックしたサブスキル。1つ = {id:番号, must:★必須か, max:0(枠数まで) or 1〜5(この枠までに)} */
   andMode: true,    /* true=すべて含む（AND検索） false=チェックしたうち need 個以上（OR検索） */
   need: 1,          /* OR検索のとき、★必須以外のうち何個以上欲しいか */
-  seeds: 1,         /* 銀種を何個まで使うか 0〜3 */
+  seeds: 1,         /* 銀種を使えるか 1=ON 0=OFF（計算部分は「何個まで」に対応しているので数で持つ） */
   natUp: 0,         /* 上がってほしい補正 0=こだわらない */
   natDn: [],        /* 下がったらイヤな補正の番号 */
   ing: "any",       /* 食材の並び */
@@ -376,6 +381,7 @@ function load(){
     if(d){ for(var k in S){ if(d[k] !== undefined) S[k] = d[k]; } oldWant = d.want || null; }
   } catch(e){}
   if(!MONS[S.monIndex]) S.monIndex = 0;
+  S.seeds = S.seeds ? 1 : 0;
   /* 古い保存（want の行形式）が残っていたら、チェック形式に直す */
   if(oldWant && !S.sel.length){
     var rows = oldWant.map(function(w){ return w.ids ? w : { ids:[w.id], need:1, max:w.max || 0 }; });
@@ -544,16 +550,12 @@ function condText(){
   return parts.join("　＋　");
 }
 
-/* ④ 銀種 */
-var SEED_LABEL = ["使わない", "1個まで", "2個まで", "3個まで"];
+/* ④ 銀種（ON/OFF のスイッチ） */
 function buildSeedChips(){
-  var box = $("seedchips"); box.innerHTML = "";
-  SEED_LABEL.forEach(function(t, i){
-    var b = document.createElement("button");
-    b.className = "chip" + (S.seeds === i ? " on" : ""); b.textContent = t;
-    b.onclick = function(){ S.seeds = i; buildSeedChips(); changed(); };
-    box.appendChild(b);
-  });
+  var sw = $("seedsw");
+  sw.className = "switch" + (S.seeds ? " on" : "");
+  sw.textContent = S.seeds ? "ON" : "OFF";
+  sw.onclick = function(){ S.seeds = S.seeds ? 0 : 1; buildSeedChips(); changed(); };
 }
 
 /* ⑤ せいかく */
@@ -871,7 +873,7 @@ function renderResult(){
   condParts.push(condText() + (S.sel.length ? " を " + K + "枠（" + LV_SUB[K-1] + "まで）に" : ""));
   if(S.natUp || S.natDn.length) condParts.push("せいかく " + okNatures().length + "/25種");
   if(S.ing !== "any") condParts.push("食材 " + $("ingsel").options[$("ingsel").selectedIndex].textContent);
-  condParts.push(s ? "銀種 " + s + "個まで" : "銀種なし");
+  condParts.push(s ? "銀種あり" : "銀種なし");
 
   var h = '';
   h += '<div class="bigbox">';
@@ -898,7 +900,7 @@ function renderResult(){
   [2,3,4,5].forEach(function(k){ h += '<th>' + k + '枠<br>' + LV_SUB[k-1] + 'まで</th>'; });
   h += '</tr></thead><tbody>';
   for(var si=0; si<=s; si++){
-    h += '<tr><th>' + (si ? "銀種 " + si + "個" : "銀種なし") + '</th>';
+    h += '<tr><th>' + (si ? "銀種あり" : "銀種なし") + '</th>';
     [2,3,4,5].forEach(function(k){
       var p = lastRes[k][si] * extra;
       var cls = (k === K && si === s) ? ' class="main"' : (p <= 0 ? ' class="na"' : '');
@@ -908,7 +910,7 @@ function renderResult(){
   }
   h += '</tbody></table></div>';
   h += '<ul class="legend"><li>「○枠」は、サブスキルを上から何枠まで見るか。3枠＝Lv50までに解放される3つ。</li>' +
-       '<li>色つきのマスが、上の大きな数字と同じ条件です。「銀種 n個」の行は「n個まで使ってよい」場合の数字です。</li></ul>';
+       '<li>色つきのマスが、上の大きな数字と同じ条件です。「銀種あり」の行は、銀種を1個使ってよい場合の数字です。</li></ul>';
   box.innerHTML = h;
 }
 function tile(k, v, note){
