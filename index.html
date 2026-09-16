@@ -115,39 +115,42 @@ input[type=text]:focus, select:focus{ outline:none; border-color:var(--accent); 
 .chip.on{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
 .chip:disabled{ opacity:.45; cursor:not-allowed; }
 
-/* サブスキルのボタン（レア度で色分け） */
-.subgrid{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
-.sb{
-  font-family:inherit; font-size:13px; padding:6px 10px; border-radius:10px; cursor:pointer;
-  border:1.5px solid transparent; color:var(--text);
-}
-.sb.g{ background:var(--gold-bg);  color:var(--gold);  }
-.sb.b{ background:var(--blue-bg);  color:var(--blue);  }
-.sb.w{ background:var(--white-bg); color:var(--white); }
-.sb.on{ border-color:currentColor; box-shadow:0 0 0 2px var(--surface), 0 0 0 4px currentColor; }
+/* サブスキルのチェック一覧（ゲーム内の検索画面ふう。金・青・白で分けて2列に並べる） */
 .rarelabel{ font-size:12px; color:var(--text-faint); margin:8px 0 4px; }
+.subchecks{ display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:4px 12px; margin-bottom:6px; }
+.sc{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-height:34px;
+  padding:3px 6px; border-radius:8px; cursor:pointer;
+}
+.sc:hover{ background:var(--surface-2); }
+.sc input{ width:20px; height:20px; accent-color:var(--accent); cursor:pointer; flex:none; }
+.sc .nm{ font-size:14px; }
+.sc.g .nm{ color:var(--gold); } .sc.b .nm{ color:var(--blue); } .sc.w .nm{ color:var(--white); }
+/* チェックした項目にだけ出る小さな設定（★必須／この枠までに） */
+.sc .must{
+  font-family:inherit; font-size:11.5px; padding:2px 7px; border-radius:999px; cursor:pointer;
+  border:1.5px solid var(--line); background:var(--surface); color:var(--text-faint);
+}
+.sc .must.on{ background:var(--warn); border-color:var(--warn); color:#fff; }
+.sc select.lim{ width:auto; font-size:11.5px; padding:2px 4px; border-radius:6px; }
+.sc .ctl{ flex-basis:100%; display:flex; align-items:center; gap:6px; padding:0 0 4px 26px; }
 
-/* 選んだサブスキルの一覧 */
-.wantlist{ margin-top:10px; display:flex; flex-direction:column; gap:6px; }
-.want{
-  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-  background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:6px 8px;
+/* オプション（ゲームの「オプション」欄ふうのスイッチ） */
+.opts{ margin-top:10px; border-top:1px solid var(--line); }
+.optrow{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 4px; border-bottom:1px solid var(--line); font-size:14px; }
+.optrow .sub{ display:block; font-size:12px; color:var(--text-faint); }
+.switch{
+  font-family:inherit; font-size:12.5px; flex:none; width:82px; height:32px; border-radius:999px; cursor:pointer;
+  border:none; background:var(--line); color:var(--text-dim); position:relative; text-align:right; padding:0 12px 0 0;
 }
-.want .items{ flex:1 1 200px; display:flex; align-items:center; gap:4px 6px; flex-wrap:wrap; }
-.want .nm{ font-size:14px; display:inline-flex; align-items:center; gap:2px; }
-.want .nm.g{ color:var(--gold); } .want .nm.b{ color:var(--blue); } .want .nm.w{ color:var(--white); }
-.want .nm .x{
-  font-family:inherit; font-size:12px; border:none; background:transparent; color:inherit; opacity:.6; cursor:pointer; padding:0 2px;
+.switch::before{
+  content:""; position:absolute; left:4px; top:4px; width:24px; height:24px; border-radius:50%; background:var(--surface);
+  box-shadow:0 1px 3px rgba(0,0,0,.25); transition:left .15s;
 }
-.want .nm .x:hover{ opacity:1; }
-.want .or{ font-size:12px; color:var(--text-faint); }
-.want .ctrl{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:12.5px; }
-.want select{ width:auto; font-size:13px; padding:5px 8px; }
-.want select.addor{ color:var(--accent); border-style:dashed; }
-.want .del{
-  font-family:inherit; font-size:13px; border:none; background:transparent; color:var(--bad); cursor:pointer; padding:4px 6px;
-}
-.empty{ font-size:13.5px; color:var(--text-faint); padding:8px 4px; }
+.switch.on{ background:var(--accent); color:var(--accent-ink); text-align:left; padding:0 0 0 12px; }
+.switch.on::before{ left:54px; }
+.optrow select{ width:auto; font-size:13px; padding:5px 8px; }
+.summary{ font-size:13px; color:var(--text-dim); margin-top:8px; padding:8px 10px; background:var(--surface-2); border-radius:10px; }
 
 /* せいかくのチェック */
 .checks{ display:flex; gap:6px 12px; flex-wrap:wrap; font-size:13.5px; }
@@ -216,14 +219,23 @@ footer{ text-align:center; font-size:11.5px; color:var(--text-faint); margin-top
 <section class="card">
   <h2>③ 欲しいサブスキル</h2>
   <div class="rarelabel">金（1枠あたり 2%）</div>
-  <div class="subgrid" id="grid-g"></div>
+  <div class="subchecks" id="grid-g"></div>
   <div class="rarelabel">青（1枠あたり 6%）</div>
-  <div class="subgrid" id="grid-b"></div>
+  <div class="subchecks" id="grid-b"></div>
   <div class="rarelabel">白（1枠あたり 12.5%）</div>
-  <div class="subgrid" id="grid-w"></div>
-  <div class="wantlist" id="wantlist"></div>
-  <p class="hint">ボタンを押すと1行ずつ増え、<b>行はぜんぶ必要</b>（＆）です。行の中の「＋ または…」から足すと、<b>そのうちどれかでよい</b>（または）になります。
-    「この枠までに」を変えると、たとえば「きのみの数S は Lv25 までに欲しい」のような指定ができます。</p>
+  <div class="subchecks" id="grid-w"></div>
+
+  <div class="opts">
+    <div class="optrow">
+      <div>すべてのサブスキルを含む（AND検索）<span class="sub">ON＝チェックした全部が必要　OFF＝チェックしたうち何個か入っていればよい</span></div>
+      <button class="switch" id="andsw"></button>
+    </div>
+    <div class="optrow" id="needrow">
+      <div>チェックしたうち<span class="sub">「★必須」を押した項目は、この数に関係なく必ず必要になります</span></div>
+      <select id="needsel"></select>
+    </div>
+  </div>
+  <div class="summary" id="wantsummary"></div>
 </section>
 
 <!-- ④ 銀種 -->
@@ -347,8 +359,9 @@ var SAVE_KEY = "pksl-gensen-shindan-v1";
 var S = {
   monIndex: 0,
   gold: 0,          /* 金枠確定の数 0〜3 */
-  want: [],         /* 条件の行の一覧。1行 = {ids:[サブスキル番号...], need:このうち何個以上, max:0(枠数まで) or 1〜5}
-                       ids が1つなら「これが欲しい」、2つ以上なら「このうち need 個以上」（または検索） */
+  sel: [],          /* チェックしたサブスキル。1つ = {id:番号, must:★必須か, max:0(枠数まで) or 1〜5(この枠までに)} */
+  andMode: true,    /* true=すべて含む（AND検索） false=チェックしたうち need 個以上（OR検索） */
+  need: 1,          /* OR検索のとき、★必須以外のうち何個以上欲しいか */
   seeds: 1,         /* 銀種を何個まで使うか 0〜3 */
   natUp: 0,         /* 上がってほしい補正 0=こだわらない */
   natDn: [],        /* 下がったらイヤな補正の番号 */
@@ -357,21 +370,25 @@ var S = {
 };
 function save(){ try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch(e){} }
 function load(){
+  var oldWant = null;
   try {
     var d = JSON.parse(localStorage.getItem(SAVE_KEY) || "null");
-    if(d){ for(var k in S){ if(d[k] !== undefined) S[k] = d[k]; } }
+    if(d){ for(var k in S){ if(d[k] !== undefined) S[k] = d[k]; } oldWant = d.want || null; }
   } catch(e){}
   if(!MONS[S.monIndex]) S.monIndex = 0;
-  /* 古い保存（{id:番号}）は新しい形（{ids:[番号]}）に直す */
-  S.want = (S.want || []).map(function(w){
-    if(w.ids) return w;
-    return { ids:[w.id], need:1, max:w.max || 0 };
-  }).filter(function(w){
-    w.ids = w.ids.filter(function(id){ return !!SUBS[id]; });
-    if(!w.need || w.need < 1) w.need = 1;
-    if(w.need > w.ids.length) w.need = w.ids.length;
-    return w.ids.length > 0;
-  });
+  /* 古い保存（want の行形式）が残っていたら、チェック形式に直す */
+  if(oldWant && !S.sel.length){
+    var rows = oldWant.map(function(w){ return w.ids ? w : { ids:[w.id], need:1, max:w.max || 0 }; });
+    var multi = rows.filter(function(w){ return w.ids.length >= 2; });
+    S.andMode = (multi.length === 0);
+    rows.forEach(function(w){
+      var isMust = S.andMode ? false : (w.ids.length === 1);
+      w.ids.forEach(function(id){ S.sel.push({ id:id, must:isMust, max:w.max || 0 }); });
+    });
+    if(multi.length) S.need = multi[0].need || 1;
+  }
+  S.sel = (S.sel || []).filter(function(x){ return !!SUBS[x.id]; });
+  if(!S.need || S.need < 1) S.need = 1;
 }
 
 /* =========================================================================
@@ -415,99 +432,116 @@ function buildGoldChips(){
   });
 }
 
-/* ③ サブスキル */
-/* そのサブスキルが、どこかの行に入っているか（入っていれば行の番号、なければ -1） */
-function wantRowOf(id){
-  for(var a=0; a<S.want.length; a++){ if(S.want[a].ids.indexOf(id) !== -1) return a; }
-  return -1;
+/* ③ サブスキル（チェックボックス） */
+function selOf(id){
+  for(var a=0; a<S.sel.length; a++){ if(S.sel[a].id === id) return S.sel[a]; }
+  return null;
 }
-function isWanted(id){ return wantRowOf(id) !== -1; }
-/* 行から1つ取り除く。空になった行は消す */
-function removeFromWant(id){
-  var a = wantRowOf(id); if(a === -1) return;
-  var w = S.want[a];
-  w.ids = w.ids.filter(function(x){ return x !== id; });
-  if(!w.ids.length) S.want.splice(a, 1);
-  else if(w.need > w.ids.length) w.need = w.ids.length;
-}
+/* ★必須でない（＝「このうち○個以上」の対象になる）チェック項目 */
+function optionalSel(){ return S.sel.filter(function(x){ return !(x.must && !S.andMode); }); }
+
 function buildSubGrid(){
   ["g","b","w"].forEach(function(r){
     var box = $("grid-" + r); box.innerHTML = "";
     SUBS.forEach(function(s, i){
       if(s.r !== r) return;
-      var b = document.createElement("button");
-      b.className = "sb " + r + (isWanted(i) ? " on" : ""); b.textContent = s.n;
-      b.onclick = function(){
-        if(isWanted(i)) removeFromWant(i);
-        else if(S.want.length >= 5) { flash("条件の行は5つまでです（枠が5つしかないので）。「または」で1行にまとめることはできます"); return; }
-        else S.want.push({ ids:[i], need:1, max:0 });
-        buildSubGrid(); buildWantList(); changed();
+      var x = selOf(i);
+      var lab = document.createElement("label"); lab.className = "sc " + r;
+      var cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!x;
+      cb.onchange = function(){
+        if(cb.checked){ if(!selOf(i)) S.sel.push({ id:i, must:false, max:0 }); }
+        else S.sel = S.sel.filter(function(y){ return y.id !== i; });
+        buildSubGrid(); buildOptions(); changed();
       };
-      box.appendChild(b);
+      var nm = document.createElement("span"); nm.className = "nm"; nm.textContent = s.n;
+      lab.appendChild(cb); lab.appendChild(nm);
+
+      if(x){
+        var ctl = document.createElement("span"); ctl.className = "ctl";
+        /* ★必須：OR検索のときだけ意味があるので、そのときだけ出す */
+        if(!S.andMode){
+          var mb = document.createElement("button"); mb.type = "button";
+          mb.className = "must" + (x.must ? " on" : ""); mb.textContent = "★必須";
+          mb.title = "押すと、この項目は「何個以上」に関係なく必ず必要になります";
+          mb.onclick = function(ev){ ev.preventDefault(); x.must = !x.must; buildSubGrid(); buildOptions(); changed(); };
+          ctl.appendChild(mb);
+        }
+        /* この枠までに */
+        var sel = document.createElement("select"); sel.className = "lim";
+        var opts = [["0","枠数まで"],["1","Lv10 の枠"],["2","Lv25 まで"],["3","Lv50 まで"],["4","Lv70 まで"],["5","Lv80 まで"]];
+        opts.forEach(function(o){
+          var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1];
+          if(String(x.max) === o[0]) op.selected = true; sel.appendChild(op);
+        });
+        sel.onclick = function(ev){ ev.stopPropagation(); };
+        sel.onchange = function(){ x.max = Number(sel.value); buildOptions(); changed(); };
+        ctl.appendChild(sel);
+        lab.appendChild(ctl);
+      }
+      box.appendChild(lab);
     });
   });
 }
-function buildWantList(){
-  var box = $("wantlist"); box.innerHTML = "";
-  if(!S.want.length){
-    box.innerHTML = '<div class="empty">まだ何も選んでいません。上のボタンを押して、欲しいサブスキルを選んでください。</div>';
-    return;
+
+/* AND/OR のスイッチと「何個以上」 */
+function buildOptions(){
+  var sw = $("andsw");
+  sw.className = "switch" + (S.andMode ? " on" : "");
+  sw.textContent = S.andMode ? "ON" : "OFF";
+  sw.onclick = function(){ S.andMode = !S.andMode; buildSubGrid(); buildOptions(); changed(); };
+
+  var row = $("needrow"), ns = $("needsel");
+  var opt = optionalSel();
+  row.hidden = S.andMode;
+  ns.innerHTML = "";
+  var maxN = Math.max(1, opt.length);
+  if(S.need > maxN) S.need = maxN;
+  for(var n=1; n<=maxN; n++){
+    var op = document.createElement("option"); op.value = n; op.textContent = n + "つ以上 含む";
+    if(S.need === n) op.selected = true; ns.appendChild(op);
   }
-  S.want.forEach(function(w, idx){
-    var d = document.createElement("div"); d.className = "want";
+  ns.onchange = function(){ S.need = Number(ns.value); buildOptions(); changed(); };
 
-    /* 行に入っているサブスキル（2つ以上なら「または」でつなぐ） */
-    var items = document.createElement("div"); items.className = "items";
-    w.ids.forEach(function(id, j){
-      if(j){ var or = document.createElement("span"); or.className = "or"; or.textContent = "または"; items.appendChild(or); }
-      var s = SUBS[id];
-      var nm = document.createElement("span"); nm.className = "nm " + s.r; nm.textContent = s.n;
-      var x = document.createElement("button"); x.className = "x"; x.textContent = "✕"; x.title = "この1つだけはずす";
-      x.onclick = function(){ removeFromWant(id); buildSubGrid(); buildWantList(); changed(); };
-      nm.appendChild(x);
-      items.appendChild(nm);
-    });
-    /* 「＋ または…」：まだどの行にも入っていないサブスキルを、この行に足す */
-    var add = document.createElement("select"); add.className = "addor";
-    var op0 = document.createElement("option"); op0.value = ""; op0.textContent = "＋ または…"; add.appendChild(op0);
-    SUBS.forEach(function(s, id){
-      if(isWanted(id)) return;
-      var op = document.createElement("option"); op.value = id; op.textContent = s.n; add.appendChild(op);
-    });
-    add.onchange = function(){
-      if(add.value === "") return;
-      w.ids.push(Number(add.value));
-      buildSubGrid(); buildWantList(); changed();
-    };
-    items.appendChild(add);
+  $("wantsummary").textContent = "条件：" + condText();
+}
 
-    /* 右側の設定：このうち何個以上／この枠までに／はずす */
-    var ctrl = document.createElement("div"); ctrl.className = "ctrl";
-    if(w.ids.length >= 2){
-      var lab0 = document.createElement("span"); lab0.textContent = "このうち";
-      var need = document.createElement("select");
-      for(var n=1; n<=w.ids.length; n++){
-        var opn = document.createElement("option"); opn.value = n; opn.textContent = n + "つ以上";
-        if(w.need === n) opn.selected = true; need.appendChild(opn);
-      }
-      need.onchange = function(){ w.need = Number(need.value); changed(); };
-      ctrl.appendChild(lab0); ctrl.appendChild(need);
-    }
-    var lab = document.createElement("span"); lab.textContent = "この枠までに：";
-    var sel = document.createElement("select");
-    var opts = [["0","枠数まで"],["1","Lv10 の枠"],["2","Lv25 まで"],["3","Lv50 まで"],["4","Lv70 まで"],["5","Lv80 まで"]];
-    opts.forEach(function(o){
-      var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1];
-      if(String(w.max) === o[0]) op.selected = true; sel.appendChild(op);
-    });
-    sel.onchange = function(){ w.max = Number(sel.value); changed(); };
-    var del = document.createElement("button"); del.className = "del"; del.textContent = "✕ 行ごとはずす";
-    del.onclick = function(){ S.want.splice(idx, 1); buildSubGrid(); buildWantList(); changed(); };
-    ctrl.appendChild(lab); ctrl.appendChild(sel); ctrl.appendChild(del);
-
-    d.appendChild(items); d.appendChild(ctrl);
-    box.appendChild(d);
+/* チェック内容を、計算用の「条件の行」に組み立てる。
+   1行 = {ids:[番号...], need:このうち何個以上, max:この枠までに}
+   AND検索 … チェック1つにつき1行（全部必要）
+   OR検索  … ★必須は1行ずつ、残りはまとめて1行「このうち need 個以上」 */
+function buildWant(){
+  var rows = [];
+  if(S.andMode){
+    S.sel.forEach(function(x){ rows.push({ ids:[x.id], need:1, max:x.max }); });
+    return rows;
+  }
+  var rest = [];
+  S.sel.forEach(function(x){
+    if(x.must) rows.push({ ids:[x.id], need:1, max:x.max });
+    else rest.push(x);
   });
+  if(rest.length){
+    /* まとめた1行の「この枠までに」は、いちばん狭いものを使う（違う値が混ざったときの決めごと） */
+    var lim = 0;
+    rest.forEach(function(x){ if(x.max && (!lim || x.max < lim)) lim = x.max; });
+    rows.push({ ids: rest.map(function(x){ return x.id; }), need: Math.min(S.need, rest.length), max: lim });
+  }
+  return rows;
+}
+/* 条件を日本語にする */
+function condText(){
+  if(!S.sel.length) return "サブスキルの条件なし";
+  var lim = function(x){ return x.max ? "（" + LV_SUB[x.max-1] + "まで）" : ""; };
+  if(S.andMode) return S.sel.map(function(x){ return SUBS[x.id].n + lim(x); }).join("・") + " を全部";
+  var must = S.sel.filter(function(x){ return x.must; });
+  var rest = S.sel.filter(function(x){ return !x.must; });
+  var parts = [];
+  if(must.length) parts.push(must.map(function(x){ return SUBS[x.id].n + lim(x); }).join("・") + " は必須");
+  if(rest.length){
+    var n = Math.min(S.need, rest.length);
+    parts.push("［" + rest.map(function(x){ return SUBS[x.id].n + lim(x); }).join("／") + "］のうち " + n + "つ以上");
+  }
+  return parts.join("　＋　");
 }
 
 /* ④ 銀種 */
@@ -817,7 +851,7 @@ function changed(){
 }
 function runCalc(){
   var t0 = Date.now();
-  var want = S.want.map(function(w){ return { ids:w.ids.slice(), need:w.need, max:w.max }; });
+  var want = buildWant();
   lastRes = computeAll(want, S.gold, S.seeds);
   var ms = Date.now() - t0;
   $("result").style.opacity = "1";
@@ -834,12 +868,7 @@ function renderResult(){
   var p0 = lastRes[K][0] * extra;
 
   var condParts = [];
-  if(S.want.length) condParts.push(S.want.map(function(w){
-    var t = w.ids.map(function(id){ return SUBS[id].n; }).join("／");
-    if(w.ids.length >= 2) t = "［" + t + " のうち" + w.need + "つ以上］";
-    return t + (w.max ? "（" + LV_SUB[w.max-1] + "まで）" : "");
-  }).join("・") + " を " + K + "枠（" + LV_SUB[K-1] + "まで）に");
-  else condParts.push("サブスキルの条件なし");
+  condParts.push(condText() + (S.sel.length ? " を " + K + "枠（" + LV_SUB[K-1] + "まで）に" : ""));
   if(S.natUp || S.natDn.length) condParts.push("せいかく " + okNatures().length + "/25種");
   if(S.ing !== "any") condParts.push("食材 " + $("ingsel").options[$("ingsel").selectedIndex].textContent);
   condParts.push(s ? "銀種 " + s + "個まで" : "銀種なし");
@@ -895,7 +924,7 @@ load();
 buildMonSelect();
 buildGoldChips();
 buildSubGrid();
-buildWantList();
+buildOptions();
 buildSeedChips();
 buildNature();
 buildKChips();
